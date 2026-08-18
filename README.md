@@ -98,20 +98,4 @@ Wizard Cat allows you to customize:
 
 ---
 
-## 📁 Project Structure
 
-```text
-WizardCat/
-│
-├── assets/
-│   └── cat/
-│       └── wizard_cat.gif
-│
-├── fonts/
-│   └── PressStart2P-Regular.ttf
-│
-├── icon.ico
-├── main.py
-├── README.md
-├── requirements.txt
-└── .gitignore
