@@ -2,7 +2,19 @@
 
 > ✨ A magical pixel-art Pomodoro timer designed to make focused work and study sessions a little more fun.
 
-Wizard Cat is a lightweight Windows desktop application built with **Python and PySide6**. It combines the Pomodoro technique with a cozy pixel-art aesthetic, an animated wizard cat, and a magical purple-themed interface.
+[⬇️ Download for Windows](../../releases/latest)
+
+---
+
+## ✨ About
+
+**Wizard Cat** is a lightweight Windows desktop application built with **Python and PySide6**.
+
+It combines the Pomodoro technique with a cozy pixel-art aesthetic, an animated wizard cat, and a magical purple-themed interface.
+
+The goal is simple: make focused work and study sessions feel a little less boring. 🪄
+
+---
 
 ## ✨ Features
 
@@ -19,19 +31,23 @@ Wizard Cat is a lightweight Windows desktop application built with **Python and 
 - 🖥️ Frameless desktop widget
 - 🪄 Draggable window
 
+---
+
 ## 💻 Download
 
-You don't need Python or any additional dependencies to use the application.
+You don't need Python or any additional dependencies to use Wizard Cat.
 
-### Windows
+### 🪟 Windows
 
-Download the latest version from the Releases page:
+Download the latest version:
 
-**[⬇️ Download Wizard Cat](../../releases/latest)**
+### [⬇️ Download Wizard Cat](../../releases/latest)
 
 Download `WizardCat.exe`, run it, and start focusing. 🪄
 
-> Windows may display a security warning when running an application downloaded from the internet because the application is not digitally signed. If you downloaded the executable from this repository's Releases page, verify that the file is `WizardCat.exe`.
+> **Note:** Windows may display a security warning because the application is not digitally signed. If you downloaded the executable from this repository's Releases page, make sure the file is `WizardCat.exe`.
+
+---
 
 ## 🎯 How It Works
 
@@ -44,6 +60,8 @@ Wizard Cat follows the Pomodoro technique:
 5. 🌙 After a set number of sessions, take a longer break.
 
 The number and duration of sessions can be customized from the settings menu.
+
+---
 
 ## ⚙️ Settings
 
@@ -59,6 +77,8 @@ Wizard Cat allows you to customize:
 | Automatic Breaks | Automatically start breaks |
 | Automatic Focus | Automatically start the next focus session |
 
+---
+
 ## ⌨️ Keyboard Shortcuts
 
 | Key | Action |
@@ -66,10 +86,32 @@ Wizard Cat allows you to customize:
 | `Space` | Start / Pause timer |
 | `R` | Reset timer |
 
+---
+
 ## 🛠️ Built With
 
-- **Python**
-- **PySide6 / Qt**
-- **PyInstaller**
-- **Pixel Art**
-- **GIF Animation**
+- 🐍 **Python**
+- 🖥️ **PySide6 / Qt**
+- 📦 **PyInstaller**
+- 🎨 **Pixel Art**
+- 🎞️ **GIF Animation**
+
+---
+
+## 📁 Project Structure
+
+```text
+WizardCat/
+│
+├── assets/
+│   └── cat/
+│       └── wizard_cat.gif
+│
+├── fonts/
+│   └── PressStart2P-Regular.ttf
+│
+├── icon.ico
+├── main.py
+├── README.md
+├── requirements.txt
+└── .gitignore
