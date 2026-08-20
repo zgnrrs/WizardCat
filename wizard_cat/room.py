@@ -107,11 +107,11 @@ class RoomManager(QObject):
         total_focus_minutes: int = 0,
         session_minutes: int = 0,
     ):
-        """Broadcast local wizard presence heartbeat with personal study stats."""
-        if not self.client or not self.room_code:
+        """Broadcast local wizard presence heartbeat and locally record own avatar."""
+        if not self.room_code:
             return
 
-        payload = json.dumps({
+        payload_dict = {
             "user_id": self.user_id,
             "username": self.username,
             "level": level,
@@ -121,8 +121,18 @@ class RoomManager(QObject):
             "total_focus_minutes": total_focus_minutes,
             "session_minutes": session_minutes,
             "last_seen": time.time(),
-        })
-        self.client.publish(f"wizardcat/v1/room/{self.room_code}/presence", payload)
+        }
+
+        # Locally record own avatar presence immediately so user's cat always shows on room floor
+        self.members[self.user_id] = payload_dict
+
+        if self.client:
+            try:
+                payload = json.dumps(payload_dict)
+                self.client.publish(f"wizardcat/v1/room/{self.room_code}/presence", payload)
+            except Exception as e:
+                print("Presence publish error:", e)
+
         self._purge_stale_members()
 
     def announce_level_up(self, new_level: int, new_title: str):
@@ -177,7 +187,7 @@ class RoomManager(QObject):
         now = time.time()
         stale_uids = [
             uid for uid, mdata in self.members.items()
-            if now - mdata.get("last_seen", 0) > 12
+            if uid != self.user_id and (now - mdata.get("last_seen", 0) > 12)
         ]
         for uid in stale_uids:
             del self.members[uid]
