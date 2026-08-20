@@ -64,12 +64,13 @@ class WizardCat(QWidget):
             self.small_font = QFont("Arial", 9)
             self.badge_font = QFont("Arial", 8)
 
-        # Session State
+        # Session & Minute-by-Minute EXP State
         self.current_session = "work"
         self.completed_sessions = 0
         self.total_seconds = self.work_minutes * 60
         self.remaining_seconds = self.total_seconds
         self.elapsed_seconds = 0
+        self.worked_seconds_in_current_minute = 0
 
         # Timer
         self.timer = QTimer(self)
@@ -114,9 +115,11 @@ class WizardCat(QWidget):
         self.break_button.setGeometry(164, 207, 40, 32)
         self.break_button.clicked.connect(self.toggle_break)
 
-        self.reset_button = QPushButton("↻", self)
-        self.reset_button.setGeometry(210, 207, 30, 32)
-        self.reset_button.clicked.connect(self.reset_timer)
+        # Terminate Button (⏹) replaces former Reset button
+        self.terminate_button = QPushButton("⏹", self)
+        self.terminate_button.setGeometry(210, 207, 30, 32)
+        self.terminate_button.setToolTip("Oturumu Sonlandır (Terminate)")
+        self.terminate_button.clicked.connect(self.terminate_session)
 
         self.update_button_styles()
 
@@ -189,14 +192,14 @@ class WizardCat(QWidget):
             }}
         """)
 
-        self.reset_button.setStyleSheet(f"""
+        self.terminate_button.setStyleSheet(f"""
             QPushButton {{
                 background-color: transparent;
                 color: {t['counter']};
                 border: none;
-                font-size: 17px;
+                font-size: 15px;
             }}
-            QPushButton:hover {{ color: {t['text_primary']}; }}
+            QPushButton:hover {{ color: #FF6B6B; }}
         """)
 
     def open_settings(self):
@@ -253,20 +256,50 @@ class WizardCat(QWidget):
         self.total_seconds = minutes * 60
         self.remaining_seconds = self.total_seconds
         self.elapsed_seconds = 0
+        self.worked_seconds_in_current_minute = 0
         self.update()
 
-    def reset_timer(self):
-        """Stop and reset timer back to initial session state."""
+    def terminate_session(self):
+        """Stop active session and reset state back to fresh Focus session."""
         self.timer.stop()
         self.cat_movie.stop()
-        self.remaining_seconds = self.total_seconds
-        self.elapsed_seconds = 0
+
+        # Credit partial minute worked if 30+ seconds elapsed
+        if (
+            self.current_session == "work"
+            and self.worked_seconds_in_current_minute >= 30
+        ):
+            leveled_up, new_level, new_title = self.rpg.add_exp(1, focus_minutes=0)
+            save_rpg_stats(self.rpg)
+            if leveled_up:
+                self.show_notification(
+                    f"✨ LEVEL UP! (Lvl {new_level})",
+                    f"Tebrikler! Yeni Unvanın: {new_title} 🪄",
+                )
+
+        self.current_session = "work"
+        self.reset_current_session()
         self.start_button.setText("▶")
         self.update()
         self.setFocus()
 
     def update_timer(self):
-        """Timer tick handler called every second."""
+        """Timer tick handler called every second with minute-by-minute EXP calculation."""
+        # Award 2 EXP for every 60 seconds worked in focus mode
+        if self.current_session == "work":
+            self.worked_seconds_in_current_minute += 1
+            if self.worked_seconds_in_current_minute >= 60:
+                self.worked_seconds_in_current_minute = 0
+                leveled_up, new_level, new_title = self.rpg.add_exp(
+                    2, focus_minutes=1
+                )
+                save_rpg_stats(self.rpg)
+                if leveled_up:
+                    self.show_notification(
+                        f"✨ LEVEL UP! (Lvl {new_level})",
+                        f"Tebrikler! Yeni Unvanın: {new_title} 🪄",
+                    )
+
         if self.timer_mode == "countdown":
             if self.remaining_seconds > 0:
                 self.remaining_seconds -= 1
@@ -279,29 +312,17 @@ class WizardCat(QWidget):
         self.update()
 
     def finish_session(self):
-        """Handle session completion state transitions, RPG EXP rewards, and notifications."""
+        """Handle session completion state transitions and notifications."""
         self.timer.stop()
         self.cat_movie.stop()
+        self.worked_seconds_in_current_minute = 0
 
         if self.current_session == "work":
             self.completed_sessions += 1
-
-            exp_gained = max(10, self.work_minutes * 2)
-            leveled_up, new_level, new_title = self.rpg.add_exp(
-                exp_gained, focus_minutes=self.work_minutes
+            self.show_notification(
+                "Focus session tamamlandı! ✨",
+                "Biraz dinlenme zamanı.",
             )
-            save_rpg_stats(self.rpg)
-
-            if leveled_up:
-                self.show_notification(
-                    f"✨ LEVEL UP! (Lvl {new_level})",
-                    f"Tebrikler! Yeni Unvanın: {new_title} 🪄",
-                )
-            else:
-                self.show_notification(
-                    f"Focus tamamlandı! +{exp_gained} EXP ✨",
-                    "Biraz dinlenme zamanı.",
-                )
 
             if self.completed_sessions % self.sessions_before_long_break == 0:
                 self.current_session = "long_break"
@@ -527,12 +548,12 @@ class WizardCat(QWidget):
         )
 
     def keyPressEvent(self, event):
-        """Keyboard shortcut handler for Space (start/pause) and R (reset)."""
+        """Keyboard shortcut handler for Space (start/pause) and R / Esc (terminate)."""
         if event.key() == Qt.Key.Key_Space:
             self.toggle_timer()
             return
-        if event.key() == Qt.Key.Key_R:
-            self.reset_timer()
+        if event.key() == Qt.Key.Key_R or event.key() == Qt.Key.Key_Escape:
+            self.terminate_session()
             return
         super().keyPressEvent(event)
 
