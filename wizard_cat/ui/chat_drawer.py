@@ -220,7 +220,7 @@ class RoomPanel(QDialog):
         self.colors = get_theme(theme_key)
         self._apply_stylesheet()
 
-        # Top Bar: Room Code, Shrink (_), Copy Code, Leave Room
+        # Top Bar: Room Code, Copy Code, Shrink (_), Leave Room (🚪)
         self.code_label = QLabel("Room Code: -")
         self.code_label.setStyleSheet(f"""
             QLabel {{
@@ -230,21 +230,37 @@ class RoomPanel(QDialog):
             }}
         """)
 
-        self.shrink_btn = QPushButton("_ Shrink")
-        self.shrink_btn.setToolTip("Shrink Online Room to Mini Floating Timer")
-        self.shrink_btn.clicked.connect(self._shrink)
-
         self.copy_btn = QPushButton("📋 Copy")
         self.copy_btn.clicked.connect(self._copy_code)
 
-        self.leave_btn = QPushButton("🚪 Leave Room")
+        # Shrink Button (_) placed next to Leave button (like standard window controls)
+        self.shrink_btn = QPushButton("_")
+        self.shrink_btn.setFixedSize(26, 26)
+        self.shrink_btn.setToolTip("Shrink to Mini Floating Timer")
+        self.shrink_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: transparent;
+                color: {self.colors['accent']};
+                border: 1px solid {self.colors['border']};
+                border-radius: 4px;
+                font-size: 13px;
+                font-weight: bold;
+            }}
+            QPushButton:hover {{
+                background-color: {self.colors['accent_hover']};
+                color: {self.colors['text_primary']};
+            }}
+        """)
+        self.shrink_btn.clicked.connect(self._shrink)
+
+        self.leave_btn = QPushButton("🚪 Leave")
         self.leave_btn.clicked.connect(self._leave_room)
 
         top_bar = QHBoxLayout()
         top_bar.addWidget(self.code_label)
         top_bar.addStretch()
-        top_bar.addWidget(self.shrink_btn)
         top_bar.addWidget(self.copy_btn)
+        top_bar.addWidget(self.shrink_btn)
         top_bar.addWidget(self.leave_btn)
 
         # Virtual Room Canvas
