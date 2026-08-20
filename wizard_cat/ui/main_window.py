@@ -225,11 +225,28 @@ class WizardCat(QWidget):
             QPushButton:hover {{ color: {t['text_primary']}; }}
         """)
 
+    def broadcast_room_presence(self):
+        """Immediately broadcast current timer, session status, and level to active room."""
+        if not self.room_mgr or not self.room_mgr.room_code:
+            return
+
+        display_seconds = (
+            self.remaining_seconds
+            if self.timer_mode == "countdown"
+            else self.elapsed_seconds
+        )
+        time_str = f"{display_seconds // 60:02d}:{display_seconds % 60:02d}"
+        status = "FOCUSING" if self.current_session == "work" else "ON BREAK"
+        self.room_mgr.broadcast_presence(
+            self.rpg.level, self.rpg.title, status, time_str
+        )
+
     def open_room_menu(self):
         """Open multiplayer room creation/joining dialog or show active room chat panel."""
         if self.room_mgr.room_code:
             if not self.room_panel:
                 self.room_panel = RoomPanel(self, self.room_mgr)
+            self.broadcast_room_presence()
             self.room_panel.show()
             self.room_panel.raise_()
             self.room_panel.activateWindow()
@@ -248,6 +265,7 @@ class WizardCat(QWidget):
             if joined:
                 self.room_panel = RoomPanel(self, self.room_mgr)
                 self.room_panel.set_room_code(self.room_mgr.room_code)
+                self.broadcast_room_presence()
                 self.room_panel.show()
 
     def open_settings(self):
@@ -309,6 +327,7 @@ class WizardCat(QWidget):
         self.remaining_seconds = self.total_seconds
         self.elapsed_seconds = 0
         self.worked_seconds_in_current_minute = 0
+        self.broadcast_room_presence()
         self.update()
 
     def reset_timer(self):
@@ -319,6 +338,7 @@ class WizardCat(QWidget):
         self.elapsed_seconds = 0
         self.worked_seconds_in_current_minute = 0
         self.start_button.setText("▶")
+        self.broadcast_room_presence()
         self.update()
         self.setFocus()
 
@@ -350,19 +370,8 @@ class WizardCat(QWidget):
             if self.elapsed_seconds >= self.total_seconds:
                 self.finish_session()
 
-        # Broadcast presence heartbeat to room if in an active room
-        if self.room_mgr.room_code:
-            display_seconds = (
-                self.remaining_seconds
-                if self.timer_mode == "countdown"
-                else self.elapsed_seconds
-            )
-            time_str = f"{display_seconds // 60:02d}:{display_seconds % 60:02d}"
-            status = "FOCUSING" if self.current_session == "work" else "ON BREAK"
-            self.room_mgr.broadcast_presence(
-                self.rpg.level, self.rpg.title, status, time_str
-            )
-
+        # Broadcast presence heartbeat to room
+        self.broadcast_room_presence()
         self.update()
 
     def finish_session(self):
@@ -402,6 +411,7 @@ class WizardCat(QWidget):
                 self.cat_movie.start()
                 self.start_button.setText("Ⅱ")
 
+        self.broadcast_room_presence()
         self.update()
 
     def toggle_timer(self):
@@ -414,6 +424,8 @@ class WizardCat(QWidget):
             self.timer.start()
             self.cat_movie.start()
             self.start_button.setText("Ⅱ")
+
+        self.broadcast_room_presence()
         self.setFocus()
 
     def toggle_break(self):
@@ -428,6 +440,7 @@ class WizardCat(QWidget):
 
         self.reset_current_session()
         self.start_button.setText("▶")
+        self.broadcast_room_presence()
         self.update()
         self.setFocus()
 
