@@ -148,6 +148,18 @@ class WizardCat(QWidget):
 
         self.update_button_styles()
 
+    def update_theme(self, theme_key: str):
+        """Update entire main window theme palette live across all components."""
+        self.theme_key = theme_key
+        self.theme = get_theme(theme_key)
+        self.compact_timer.update_theme(theme_key)
+        self.update_button_styles()
+
+        if self.room_panel:
+            self.room_panel.update_theme(self.theme)
+
+        self.update()  # Force instant repaint of background gradient, text, badges
+
     def update_button_styles(self):
         """Apply active theme color palette to control buttons."""
         t = self.theme
@@ -332,14 +344,8 @@ class WizardCat(QWidget):
             self.auto_start_breaks = dialog.auto_break_checkbox.isChecked()
             self.auto_start_focus = dialog.auto_focus_checkbox.isChecked()
 
-            self.theme_key = dialog.theme_combo.currentData()
-            self.theme = get_theme(self.theme_key)
-            self.compact_timer.update_theme(self.theme_key)
-            self.update_button_styles()
-
-            if self.room_panel:
-                self.room_panel.colors = self.theme
-                self.room_panel._apply_stylesheet()
+            # Apply and save new theme permanently
+            self.update_theme(dialog.theme_combo.currentData())
 
             save_settings({
                 "work_minutes": self.work_minutes,

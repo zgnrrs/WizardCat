@@ -215,17 +215,9 @@ class RoomPanel(QDialog):
 
         theme_key = getattr(main_window, "theme_key", "wizard_purple")
         self.colors = get_theme(theme_key)
-        self._apply_stylesheet()
 
         # Top Bar: Room Code, Copy Code, Shrink (_), Leave Room (🚪)
         self.code_label = QLabel("Room Code: -")
-        self.code_label.setStyleSheet(f"""
-            QLabel {{
-                color: {self.colors['accent']};
-                font-size: 15px;
-                font-weight: bold;
-            }}
-        """)
 
         self.copy_btn = QPushButton("📋 Copy")
         self.copy_btn.clicked.connect(self._copy_code)
@@ -234,20 +226,6 @@ class RoomPanel(QDialog):
         self.shrink_btn = QPushButton("_")
         self.shrink_btn.setFixedSize(26, 26)
         self.shrink_btn.setToolTip("Shrink to Mini Floating Timer")
-        self.shrink_btn.setStyleSheet(f"""
-            QPushButton {{
-                background-color: transparent;
-                color: {self.colors['accent']};
-                border: 1px solid {self.colors['border']};
-                border-radius: 4px;
-                font-size: 13px;
-                font-weight: bold;
-            }}
-            QPushButton:hover {{
-                background-color: {self.colors['accent_hover']};
-                color: {self.colors['text_primary']};
-            }}
-        """)
         self.shrink_btn.clicked.connect(self._shrink)
 
         self.leave_btn = QPushButton("🚪 Leave")
@@ -298,12 +276,10 @@ class RoomPanel(QDialog):
         self.timer_readout = QLabel("25:00")
         self.timer_readout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.timer_readout.setFont(main_window.timer_font)
-        self.timer_readout.setStyleSheet(f"color: {self.colors['text_primary']};")
 
         self.session_label = QLabel("FOCUS")
         self.session_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.session_label.setFont(main_window.small_font)
-        self.session_label.setStyleSheet(f"color: {self.colors['session_work']}; font-weight: bold;")
 
         # Controls Buttons
         self.start_btn = QPushButton("▶")
@@ -334,6 +310,9 @@ class RoomPanel(QDialog):
         timer_box.addWidget(self.session_label)
         timer_box.addLayout(ctrl_layout)
 
+        # Apply Stylesheet
+        self._apply_stylesheet()
+
         # Update Timer UI Timer
         self.update_timer = QTimer(self)
         self.update_timer.setInterval(200)
@@ -357,6 +336,14 @@ class RoomPanel(QDialog):
             self.room_manager.members_updated.connect(self.on_members_updated)
             self.room_manager.chat_received.connect(self.add_chat_message)
             self.room_manager.room_joined.connect(self.set_room_code)
+
+    def update_theme(self, theme_colors: dict):
+        """Update entire room window theme palette live."""
+        self.colors = theme_colors
+        self.canvas.colors = theme_colors
+        self.canvas.update()
+        self._apply_stylesheet()
+        self._sync_timer_display()
 
     def set_room_code(self, code: str):
         self.code_label.setText(f"Room Code: {code}")
@@ -385,6 +372,7 @@ class RoomPanel(QDialog):
         display_seconds = mw.remaining_seconds if mw.timer_mode == "countdown" else mw.elapsed_seconds
         m, s = display_seconds // 60, display_seconds % 60
         self.timer_readout.setText(f"{m:02d}:{s:02d}")
+        self.timer_readout.setStyleSheet(f"color: {self.colors['text_primary']};")
 
         if mw.current_session == "work":
             self.session_label.setText("FOCUS")
@@ -484,3 +472,20 @@ class RoomPanel(QDialog):
                 color: {c['text_primary']};
             }}
         """)
+        if hasattr(self, "code_label"):
+            self.code_label.setStyleSheet(f"color: {c['accent']}; font-size: 15px; font-weight: bold;")
+        if hasattr(self, "shrink_btn"):
+            self.shrink_btn.setStyleSheet(f"""
+                QPushButton {{
+                    background-color: transparent;
+                    color: {c['accent']};
+                    border: 1px solid {c['border']};
+                    border-radius: 4px;
+                    font-size: 13px;
+                    font-weight: bold;
+                }}
+                QPushButton:hover {{
+                    background-color: {c['accent_hover']};
+                    color: {c['text_primary']};
+                }}
+            """)

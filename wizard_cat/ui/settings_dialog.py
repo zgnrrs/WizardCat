@@ -21,9 +21,9 @@ class SettingsDialog(QDialog):
         self.setWindowTitle("Wizard Cat - Settings")
         self.setFixedSize(330, 430)
 
-        # Get parent theme colors
-        current_theme_key = getattr(parent, "theme_key", "wizard_purple")
-        theme_colors = get_theme(current_theme_key)
+        # Record initial parent theme key for rollback on Cancel
+        self.initial_theme_key = getattr(parent, "theme_key", "wizard_purple") if parent else "wizard_purple"
+        theme_colors = get_theme(self.initial_theme_key)
 
         self._apply_stylesheet(theme_colors)
 
@@ -63,7 +63,7 @@ class SettingsDialog(QDialog):
         selected_index = 0
         for idx, (t_key, t_name) in enumerate(themes.items()):
             self.theme_combo.addItem(t_name, t_key)
-            if t_key == current_theme_key:
+            if t_key == self.initial_theme_key:
                 selected_index = idx
         self.theme_combo.setCurrentIndex(selected_index)
         self.theme_combo.currentIndexChanged.connect(self._on_theme_changed)
@@ -89,7 +89,7 @@ class SettingsDialog(QDialog):
         save_button = QPushButton("Save")
         cancel_button = QPushButton("Cancel")
         save_button.clicked.connect(self.accept)
-        cancel_button.clicked.connect(self.reject)
+        cancel_button.clicked.connect(self._on_cancel)
 
         buttons = QHBoxLayout()
         buttons.addWidget(cancel_button)
@@ -118,7 +118,7 @@ class SettingsDialog(QDialog):
         self.setLayout(layout)
 
     def _on_theme_changed(self):
-        """Update settings dialog stylesheet live when user changes theme dropdown."""
+        """Update settings dialog stylesheet and live preview parent window."""
         theme_key = self.theme_combo.currentData()
         theme_colors = get_theme(theme_key)
         self._apply_stylesheet(theme_colors)
@@ -130,6 +130,18 @@ class SettingsDialog(QDialog):
                     font-weight: bold;
                 }}
             """)
+
+        # Live preview on parent main window
+        parent = self.parent()
+        if parent and hasattr(parent, "update_theme"):
+            parent.update_theme(theme_key)
+
+    def _on_cancel(self):
+        """Revert parent window theme back to initial theme if cancelled."""
+        parent = self.parent()
+        if parent and hasattr(parent, "update_theme"):
+            parent.update_theme(self.initial_theme_key)
+        self.reject()
 
     def _apply_stylesheet(self, colors: dict):
         """Apply dynamic stylesheet based on theme color palette."""
