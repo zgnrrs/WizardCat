@@ -27,7 +27,7 @@ from wizard_cat.utils import resource_path
 
 
 class VirtualRoomCanvas(QWidget):
-    """Custom canvas displaying online room members as Wizard Cats gathered in a cozy virtual room."""
+    """Custom canvas displaying online room members as Wizard Cats with personal total study time stats."""
 
     def __init__(self, parent=None, colors=None):
         super().__init__(parent)
@@ -146,9 +146,16 @@ class VirtualRoomCanvas(QWidget):
             cx, cy = positions[idx]
             name = member.get("username", "Wizard")
             lvl = member.get("level", 1)
-            title = member.get("title", "")
             status = member.get("status", "FOCUSING")
-            t_str = member.get("time_str", "25:00")
+
+            # Personal study stats
+            total_mins = member.get("total_focus_minutes", 0)
+            session_mins = member.get("session_minutes", 0)
+
+            if total_mins < 60:
+                total_str = f"{total_mins} dk"
+            else:
+                total_str = f"{total_mins // 60}s {total_mins % 60}dk"
 
             # Shadow under cat
             painter.setBrush(QColor(0, 0, 0, 80))
@@ -159,8 +166,8 @@ class VirtualRoomCanvas(QWidget):
             if not current_frame.isNull():
                 painter.drawPixmap(cx - cat_w // 2, cy - cat_h // 2, cat_w, cat_h, current_frame)
 
-            # Floating Nametag & Prominent Timer Badge Above Cat
-            bg_rect = QRectF(cx - 70, cy - cat_h // 2 - 38, 140, 34)
+            # Floating Personal Study Stats Badge Above Cat
+            bg_rect = QRectF(cx - 75, cy - cat_h // 2 - 38, 150, 34)
             painter.setBrush(QColor(c["input_bg"]))
             painter.setPen(QColor(c["border"]))
             painter.drawRoundedRect(bg_rect, 6, 6)
@@ -169,20 +176,25 @@ class VirtualRoomCanvas(QWidget):
             painter.setFont(QFont("Arial", 8, QFont.Weight.Bold))
             painter.setPen(QColor(c["accent"]))
             painter.drawText(
-                QRectF(cx - 70, cy - cat_h // 2 - 36, 140, 15),
+                QRectF(cx - 75, cy - cat_h // 2 - 36, 150, 15),
                 Qt.AlignmentFlag.AlignCenter,
                 f"🧙‍♂️ {name} (Lvl {lvl})",
             )
 
-            # Status & Prominent Timer Display
+            # Personal Study Time Stat
             status_color = QColor(c["session_work"]) if status == "FOCUSING" else QColor(c["session_long"])
             painter.setPen(status_color)
             painter.setFont(QFont("Arial", 8, QFont.Weight.Bold))
-            timer_display = f"⏳ {t_str}" if t_str else f"{status}"
+
+            if status == "FOCUSING":
+                personal_stat_str = f"⏱️ Toplam: {total_str} ({session_mins}dk)"
+            else:
+                personal_stat_str = f"☕ Molada ({total_str} çalıştı)"
+
             painter.drawText(
-                QRectF(cx - 70, cy - cat_h // 2 - 20, 140, 15),
+                QRectF(cx - 75, cy - cat_h // 2 - 20, 150, 15),
                 Qt.AlignmentFlag.AlignCenter,
-                f"{status} • {timer_display}",
+                personal_stat_str,
             )
 
             # Render Floating Reaction Bubbles
@@ -202,7 +214,7 @@ class VirtualRoomCanvas(QWidget):
 
 
 class RoomPanel(QDialog):
-    """Pop-out window displaying the Virtual Wizard Cat Study Lounge, live timer, and chat."""
+    """Pop-out window displaying the Virtual Wizard Cat Study Lounge and personal study stats."""
 
     def __init__(self, parent=None, room_manager=None):
         super().__init__(parent)
@@ -219,22 +231,8 @@ class RoomPanel(QDialog):
         self.code_label.setStyleSheet(f"""
             QLabel {{
                 color: {self.colors['accent']};
-                font-size: 14px;
+                font-size: 15px;
                 font-weight: bold;
-            }}
-        """)
-
-        # Prominent Timer Readout Header
-        self.timer_header_label = QLabel("⏳ --:--")
-        self.timer_header_label.setStyleSheet(f"""
-            QLabel {{
-                color: {self.colors['text_primary']};
-                font-size: 13px;
-                font-weight: bold;
-                background-color: {self.colors['input_bg']};
-                border: 1px solid {self.colors['border']};
-                border-radius: 4px;
-                padding: 2px 6px;
             }}
         """)
 
@@ -246,7 +244,6 @@ class RoomPanel(QDialog):
 
         top_bar = QHBoxLayout()
         top_bar.addWidget(self.code_label)
-        top_bar.addWidget(self.timer_header_label)
         top_bar.addStretch()
         top_bar.addWidget(self.copy_btn)
         top_bar.addWidget(self.leave_btn)
@@ -305,13 +302,6 @@ class RoomPanel(QDialog):
 
     def on_members_updated(self, member_list: list):
         self.canvas.set_members(member_list)
-        if self.room_manager:
-            for m in member_list:
-                if m.get("user_id") == self.room_manager.user_id:
-                    status = m.get("status", "FOCUSING")
-                    t_str = m.get("time_str", "--:--")
-                    self.timer_header_label.setText(f"⏳ {t_str} [{status}]")
-                    break
 
     def add_chat_message(self, username: str, text: str, msg_type: str):
         if msg_type == "reaction":

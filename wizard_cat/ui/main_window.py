@@ -226,7 +226,7 @@ class WizardCat(QWidget):
         """)
 
     def broadcast_room_presence(self):
-        """Immediately broadcast current timer, session status, and level to active room."""
+        """Immediately broadcast personal study stats and level to active room."""
         if not self.room_mgr or not self.room_mgr.room_code:
             return
 
@@ -237,8 +237,19 @@ class WizardCat(QWidget):
         )
         time_str = f"{display_seconds // 60:02d}:{display_seconds % 60:02d}"
         status = "FOCUSING" if self.current_session == "work" else "ON BREAK"
+
+        if self.timer_mode == "countdown":
+            session_mins = (self.total_seconds - self.remaining_seconds) // 60
+        else:
+            session_mins = self.elapsed_seconds // 60
+
         self.room_mgr.broadcast_presence(
-            self.rpg.level, self.rpg.title, status, time_str
+            level=self.rpg.level,
+            title=self.rpg.title,
+            status=status,
+            time_str=time_str,
+            total_focus_minutes=self.rpg.total_focus_minutes,
+            session_minutes=max(0, session_mins),
         )
 
     def open_room_menu(self):

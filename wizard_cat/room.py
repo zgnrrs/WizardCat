@@ -12,7 +12,7 @@ MQTT_PORT = 1883
 
 
 class RoomManager(QObject):
-    """Manages real-time study room presence, member tracking, and room chat."""
+    """Manages real-time study room presence, member tracking, personal study stats, and room chat."""
 
     members_updated = Signal(list)
     chat_received = Signal(str, str, str)  # (username, message, msg_type)
@@ -98,8 +98,16 @@ class RoomManager(QObject):
         })
         self.client.publish(f"wizardcat/v1/room/{self.room_code}/chat", payload)
 
-    def broadcast_presence(self, level: int, title: str, status: str, time_str: str):
-        """Broadcast local wizard presence heartbeat to room members."""
+    def broadcast_presence(
+        self,
+        level: int,
+        title: str,
+        status: str,
+        time_str: str,
+        total_focus_minutes: int = 0,
+        session_minutes: int = 0,
+    ):
+        """Broadcast local wizard presence heartbeat with personal study stats."""
         if not self.client or not self.room_code:
             return
 
@@ -110,6 +118,8 @@ class RoomManager(QObject):
             "title": title,
             "status": status,
             "time_str": time_str,
+            "total_focus_minutes": total_focus_minutes,
+            "session_minutes": session_minutes,
             "last_seen": time.time(),
         })
         self.client.publish(f"wizardcat/v1/room/{self.room_code}/presence", payload)
