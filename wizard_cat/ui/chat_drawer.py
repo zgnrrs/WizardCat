@@ -27,7 +27,7 @@ from wizard_cat.utils import resource_path
 
 
 class VirtualRoomCanvas(QWidget):
-    """Custom canvas displaying online room members as Wizard Cats arranged in a virtual study lounge."""
+    """Embedded custom canvas displaying online room members (or solo cat) on a virtual room floor."""
 
     def __init__(self, parent=None, colors=None):
         super().__init__(parent)
@@ -35,7 +35,7 @@ class VirtualRoomCanvas(QWidget):
         self.members: List[dict] = []
         self.reactions: List[dict] = []  # active floating emote bubbles
 
-        self.setMinimumSize(340, 260)
+        self.setMinimumSize(320, 180)
 
         # Cat GIF Asset
         self.cat_movie = QMovie(resource_path("assets/cat/wizard_cat.gif"))
@@ -95,28 +95,22 @@ class VirtualRoomCanvas(QWidget):
 
         # Floor Planks & Magical Sparkles
         painter.setPen(QColor(c["border"]).darker(150))
-        for y in range(40, self.height(), 45):
+        for y in range(30, self.height(), 40):
             painter.drawLine(0, y, self.width(), y)
 
-        sparkles = [(30, 50), (120, 30), (280, 45), (70, 210), (290, 200)]
+        sparkles = [(30, 40), (120, 25), (260, 35), (70, 140), (270, 150)]
         for sx, sy in sparkles:
             painter.setBrush(QColor(c["sparkles"]))
             painter.drawRect(sx, sy, 2, 2)
 
         if not self.members:
-            # Connecting / Empty Room Message
-            painter.setFont(QFont("Arial", 10))
-            painter.setPen(QColor(c["text_secondary"]))
-            painter.drawText(
-                self.rect(),
-                Qt.AlignmentFlag.AlignCenter,
-                "Connecting to study room...\nWizard cats will gather here as friends join! 🪄",
-            )
+            # Solo Mode: Render 1 Cat in Center
+            self._render_single_cat(painter, self.width() // 2, self.height() // 2 + 15, "WizardCat", 1, "FOCUSING", 0, 0)
             return
 
         # Render Cats side-by-side on Virtual Room Floor
         count = len(self.members)
-        cat_w, cat_h = 70, 70
+        cat_w, cat_h = 60, 60
 
         # Calculate neat row positions across virtual floor
         positions = []
@@ -127,7 +121,7 @@ class VirtualRoomCanvas(QWidget):
             row_count = min(cols, count - r * cols)
             x_step = self.width() / (row_count + 1)
             x = int((col + 1) * x_step)
-            y = int(85 + r * 85)
+            y = int(65 + r * 65)
             positions.append((x, y))
 
         current_frame = self.cat_movie.currentPixmap() if self.cat_movie.isValid() else QPixmap()
@@ -140,109 +134,101 @@ class VirtualRoomCanvas(QWidget):
             name = member.get("username", "Wizard")
             lvl = member.get("level", 1)
             status = member.get("status", "FOCUSING")
-
-            # Personal study stats
             total_mins = member.get("total_focus_minutes", 0)
             session_mins = member.get("session_minutes", 0)
 
-            if total_mins < 60:
-                total_str = f"{total_mins}m"
-            else:
-                total_str = f"{total_mins // 60}h {total_mins % 60}m"
+            self._render_cat_with_badge(painter, cx, cy, name, lvl, status, total_mins, session_mins, current_frame)
 
-            # Shadow under cat
-            painter.setBrush(QColor(0, 0, 0, 80))
-            painter.setPen(Qt.PenStyle.NoPen)
-            painter.drawEllipse(cx - 25, cy + cat_h // 2 - 8, 50, 14)
+    def _render_single_cat(self, painter, cx, cy, name, lvl, status, total_mins, session_mins):
+        current_frame = self.cat_movie.currentPixmap() if self.cat_movie.isValid() else QPixmap()
+        cat_w, cat_h = 75, 75
 
-            # Cat Graphic (Same Wizard Cat for all members)
-            if not current_frame.isNull():
-                painter.drawPixmap(cx - cat_w // 2, cy - cat_h // 2, cat_w, cat_h, current_frame)
+        # Shadow under cat
+        painter.setBrush(QColor(0, 0, 0, 80))
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.drawEllipse(cx - 28, cy + cat_h // 2 - 8, 56, 14)
 
-            # Floating Personal Study Stats Badge Above Cat
-            bg_rect = QRectF(cx - 75, cy - cat_h // 2 - 38, 150, 34)
-            painter.setBrush(QColor(c["input_bg"]))
-            painter.setPen(QColor(c["border"]))
-            painter.drawRoundedRect(bg_rect, 6, 6)
+        # Cat Graphic
+        if not current_frame.isNull():
+            painter.drawPixmap(cx - cat_w // 2, cy - cat_h // 2, cat_w, cat_h, current_frame)
 
-            # Username & Level
-            painter.setFont(QFont("Arial", 8, QFont.Weight.Bold))
-            painter.setPen(QColor(c["accent"]))
-            painter.drawText(
-                QRectF(cx - 75, cy - cat_h // 2 - 36, 150, 15),
-                Qt.AlignmentFlag.AlignCenter,
-                f"🧙‍♂️ {name} (Lvl {lvl})",
-            )
+    def _render_cat_with_badge(self, painter, cx, cy, name, lvl, status, total_mins, session_mins, current_frame):
+        c = self.colors
+        cat_w, cat_h = 60, 60
 
-            # Personal Study Time Stat
-            status_color = QColor(c["session_work"]) if status == "FOCUSING" else QColor(c["session_long"])
-            painter.setPen(status_color)
-            painter.setFont(QFont("Arial", 8, QFont.Weight.Bold))
+        if total_mins < 60:
+            total_str = f"{total_mins}m"
+        else:
+            total_str = f"{total_mins // 60}h {total_mins % 60}m"
 
-            if status == "FOCUSING":
-                personal_stat_str = f"⏱️ Total: {total_str} ({session_mins}m)"
-            else:
-                personal_stat_str = f"☕ On Break ({total_str})"
+        # Shadow under cat
+        painter.setBrush(QColor(0, 0, 0, 80))
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.drawEllipse(cx - 22, cy + cat_h // 2 - 6, 44, 12)
 
-            painter.drawText(
-                QRectF(cx - 75, cy - cat_h // 2 - 20, 150, 15),
-                Qt.AlignmentFlag.AlignCenter,
-                personal_stat_str,
-            )
+        # Cat Graphic
+        if not current_frame.isNull():
+            painter.drawPixmap(cx - cat_w // 2, cy - cat_h // 2, cat_w, cat_h, current_frame)
 
-            # Render Floating Reaction Bubbles
-            for r in self.reactions:
-                if r["username"] == name or r["username"] == "all":
-                    rx = cx
-                    ry = cy - cat_h // 2 - 45 - r["y_offset"]
-                    op = int(r["opacity"] * 255)
-                    if op > 0:
-                        painter.setFont(QFont("Arial", 16))
-                        painter.setPen(QColor(255, 255, 255, op))
-                        painter.drawText(
-                            QRectF(rx - 20, ry - 15, 40, 30),
-                            Qt.AlignmentFlag.AlignCenter,
-                            r["emote"],
-                        )
+        # Floating Personal Study Stats Badge Above Cat
+        bg_rect = QRectF(cx - 65, cy - cat_h // 2 - 32, 130, 30)
+        painter.setBrush(QColor(c["input_bg"]))
+        painter.setPen(QColor(c["border"]))
+        painter.drawRoundedRect(bg_rect, 5, 5)
+
+        # Username & Level
+        painter.setFont(QFont("Arial", 7, QFont.Weight.Bold))
+        painter.setPen(QColor(c["accent"]))
+        painter.drawText(
+            QRectF(cx - 65, cy - cat_h // 2 - 30, 130, 13),
+            Qt.AlignmentFlag.AlignCenter,
+            f"🧙‍♂️ {name} (Lvl {lvl})",
+        )
+
+        # Personal Study Time Stat
+        status_color = QColor(c["session_work"]) if status == "FOCUSING" else QColor(c["session_long"])
+        painter.setPen(status_color)
+        painter.setFont(QFont("Arial", 7, QFont.Weight.Bold))
+
+        if status == "FOCUSING":
+            personal_stat_str = f"⏱️ Total: {total_str} ({session_mins}m)"
+        else:
+            personal_stat_str = f"☕ On Break ({total_str})"
+
+        painter.drawText(
+            QRectF(cx - 65, cy - cat_h // 2 - 16, 130, 13),
+            Qt.AlignmentFlag.AlignCenter,
+            personal_stat_str,
+        )
+
+        # Render Floating Reaction Bubbles
+        for r in self.reactions:
+            if r["username"] == name or r["username"] == "all":
+                rx = cx
+                ry = cy - cat_h // 2 - 40 - r["y_offset"]
+                op = int(r["opacity"] * 255)
+                if op > 0:
+                    painter.setFont(QFont("Arial", 15))
+                    painter.setPen(QColor(255, 255, 255, op))
+                    painter.drawText(
+                        QRectF(rx - 20, ry - 15, 40, 30),
+                        Qt.AlignmentFlag.AlignCenter,
+                        r["emote"],
+                    )
 
 
-class RoomPanel(QDialog):
-    """Pop-out window displaying the Virtual Wizard Cat Study Lounge and personal study stats."""
+class RoomChatDrawer(QDialog):
+    """Pop-over window for sending reactions and chatting in an active room."""
 
     def __init__(self, parent=None, room_manager=None):
         super().__init__(parent)
         self.room_manager = room_manager
-        self.setWindowTitle("Wizard Cat - Virtual Study Lounge")
-        self.setFixedSize(380, 520)
+        self.setWindowTitle("Room Chat & Reactions")
+        self.setFixedSize(320, 360)
 
         theme_key = getattr(parent, "theme_key", "wizard_purple")
         self.colors = get_theme(theme_key)
         self._apply_stylesheet()
-
-        # Room Code Header
-        self.code_label = QLabel("Room Code: -")
-        self.code_label.setStyleSheet(f"""
-            QLabel {{
-                color: {self.colors['accent']};
-                font-size: 15px;
-                font-weight: bold;
-            }}
-        """)
-
-        self.copy_btn = QPushButton("📋 Copy Code")
-        self.copy_btn.clicked.connect(self._copy_code)
-
-        self.leave_btn = QPushButton("🚪 Leave Room")
-        self.leave_btn.clicked.connect(self._leave_room)
-
-        top_bar = QHBoxLayout()
-        top_bar.addWidget(self.code_label)
-        top_bar.addStretch()
-        top_bar.addWidget(self.copy_btn)
-        top_bar.addWidget(self.leave_btn)
-
-        # Virtual Room Canvas
-        self.canvas = VirtualRoomCanvas(self, colors=self.colors)
 
         # Quick Reaction Emote Buttons
         emotes_layout = QHBoxLayout()
@@ -260,7 +246,6 @@ class RoomPanel(QDialog):
         # Live Chat Section
         self.chat_display = QTextEdit()
         self.chat_display.setReadOnly(True)
-        self.chat_display.setFixedHeight(90)
 
         self.chat_input = QLineEdit()
         self.chat_input.setPlaceholderText("Type a message in room chat...")
@@ -275,37 +260,23 @@ class RoomPanel(QDialog):
 
         # Assembly
         layout = QVBoxLayout()
-        layout.addLayout(top_bar)
-        layout.addWidget(self.canvas)
         layout.addLayout(emotes_layout)
-        layout.addSpacing(4)
+        layout.addSpacing(6)
         layout.addWidget(self.chat_display)
         layout.addLayout(input_layout)
 
         self.setLayout(layout)
 
-        # Connect Signals
         if self.room_manager:
-            self.room_manager.members_updated.connect(self.on_members_updated)
             self.room_manager.chat_received.connect(self.add_chat_message)
-            self.room_manager.room_joined.connect(self.set_room_code)
-
-    def set_room_code(self, code: str):
-        self.code_label.setText(f"Room Code: {code}")
-
-    def on_members_updated(self, member_list: list):
-        self.canvas.set_members(member_list)
 
     def add_chat_message(self, username: str, text: str, msg_type: str):
-        if msg_type == "reaction":
-            self.canvas.add_reaction(username, text)
-            return
-
         if msg_type == "system":
             formatted = f"<i><b>system:</b> {username} {text}</i><br>"
         elif msg_type == "level_up":
             formatted = f"<b style='color: #FFD966;'>✨ {username}:</b> {text}<br>"
-            self.canvas.add_reaction(username, "✨")
+        elif msg_type == "reaction":
+            formatted = f"<i><b>{username} sent {text}</b></i><br>"
         else:
             formatted = f"<b>{username}:</b> {text}<br>"
 
@@ -314,24 +285,12 @@ class RoomPanel(QDialog):
     def _send_reaction(self, emote: str):
         if self.room_manager:
             self.room_manager.send_chat_message(emote, msg_type="reaction")
-            self.canvas.add_reaction(self.room_manager.username, emote)
 
     def _send_chat(self):
         txt = self.chat_input.text().strip()
         if txt and self.room_manager:
             self.room_manager.send_chat_message(txt)
             self.chat_input.clear()
-
-    def _copy_code(self):
-        if self.room_manager and self.room_manager.room_code:
-            QGuiApplication.clipboard().setText(self.room_manager.room_code)
-            self.copy_btn.setText("✓ Copied!")
-            QGuiApplication.singleShot(2000, lambda: self.copy_btn.setText("📋 Copy Code"))
-
-    def _leave_room(self):
-        if self.room_manager:
-            self.room_manager.leave_room()
-        self.close()
 
     def _apply_stylesheet(self):
         c = self.colors

@@ -3,8 +3,8 @@ from PySide6.QtGui import (
     QColor,
     QFont,
     QFontDatabase,
+    QGuiApplication,
     QLinearGradient,
-    QMovie,
     QPainter,
 )
 from PySide6.QtWidgets import (
@@ -18,21 +18,21 @@ from wizard_cat.config import load_settings, save_settings
 from wizard_cat.room import RoomManager
 from wizard_cat.rpg import load_rpg_stats, save_rpg_stats
 from wizard_cat.themes import get_theme
-from wizard_cat.ui.chat_drawer import RoomPanel
+from wizard_cat.ui.chat_drawer import RoomChatDrawer, VirtualRoomCanvas
 from wizard_cat.ui.room_dialog import RoomDialog
 from wizard_cat.ui.settings_dialog import SettingsDialog
 from wizard_cat.utils import resource_path
 
 
 class WizardCat(QWidget):
-    """Main desktop widget window for the Wizard Cat Pomodoro timer."""
+    """Main desktop widget window for Wizard Cat seamlessly integrating Virtual Room and Pomodoro timer."""
 
     def __init__(self):
         super().__init__()
 
         # Window Setup
         self.setWindowTitle("Wizard Cat")
-        self.resize(320, 250)
+        self.resize(350, 360)
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
@@ -53,9 +53,9 @@ class WizardCat(QWidget):
 
         self.rpg = load_rpg_stats()
 
-        # Multiplayer Room Manager
+        # Multiplayer Room Manager & Chat Drawer
         self.room_mgr = RoomManager()
-        self.room_panel = None
+        self.chat_drawer = None
 
         # Font Setup
         font_id = QFontDatabase.addApplicationFont(
@@ -67,7 +67,7 @@ class WizardCat(QWidget):
             self.small_font = QFont(font_family, 8)
             self.badge_font = QFont(font_family, 7)
         else:
-            self.timer_font = QFont("Arial", 32)
+            self.timer_font = QFont("Arial", 30)
             self.small_font = QFont("Arial", 9)
             self.badge_font = QFont("Arial", 8)
 
@@ -79,16 +79,18 @@ class WizardCat(QWidget):
         self.elapsed_seconds = 0
         self.worked_seconds_in_current_minute = 0
 
+        # Embedded Virtual Room Canvas
+        self.canvas = VirtualRoomCanvas(self, colors=self.theme)
+        self.canvas.setGeometry(10, 28, 330, 180)
+
+        # Connect Room Manager Signals
+        self.room_mgr.members_updated.connect(self.on_room_members_updated)
+        self.room_mgr.chat_received.connect(self.on_room_chat_received)
+
         # Timer
         self.timer = QTimer(self)
         self.timer.setInterval(1000)
         self.timer.timeout.connect(self.update_timer)
-
-        # Cat Animation
-        self.cat_movie = QMovie(resource_path("assets/cat/wizard_cat.gif"))
-        self.cat_movie.setCacheMode(QMovie.CacheMode.CacheAll)
-        self.cat_movie.frameChanged.connect(self.update)
-        self.cat_movie.start()
 
         # UI Controls
         self._init_controls()
@@ -107,30 +109,52 @@ class WizardCat(QWidget):
     def _init_controls(self):
         """Initialize UI control buttons and styling."""
         self.close_button = QPushButton("×", self)
-        self.close_button.setGeometry(294, 8, 20, 20)
+        self.close_button.setGeometry(324, 6, 20, 20)
         self.close_button.clicked.connect(self.close)
 
         self.settings_button = QPushButton("⚙", self)
-        self.settings_button.setGeometry(266, 8, 24, 24)
+        self.settings_button.setGeometry(296, 6, 24, 24)
         self.settings_button.setToolTip("Settings")
         self.settings_button.clicked.connect(self.open_settings)
 
-        # Room / Chat Button (👥)
+        # Room Button (👥)
         self.room_button = QPushButton("👥", self)
-        self.room_button.setGeometry(238, 8, 24, 24)
-        self.room_button.setToolTip("Multiplayer Study Room & Chat")
+        self.room_button.setGeometry(268, 6, 24, 24)
+        self.room_button.setToolTip("Multiplayer Study Room")
         self.room_button.clicked.connect(self.open_room_menu)
 
+        # Chat Button (💬) - Active when in room
+        self.chat_button = QPushButton("💬", self)
+        self.chat_button.setGeometry(240, 6, 24, 24)
+        self.chat_button.setToolTip("Room Chat & Reactions")
+        self.chat_button.clicked.connect(self.open_chat_drawer)
+        self.chat_button.hide()
+
+        # Copy Room Code Button (📋) - Active when in room
+        self.copy_button = QPushButton("📋", self)
+        self.copy_button.setGeometry(212, 6, 24, 24)
+        self.copy_button.setToolTip("Copy Room Code")
+        self.copy_button.clicked.connect(self.copy_room_code)
+        self.copy_button.hide()
+
+        # Leave Room Button (🚪) - Active when in room
+        self.leave_button = QPushButton("🚪", self)
+        self.leave_button.setGeometry(184, 6, 24, 24)
+        self.leave_button.setToolTip("Leave Room")
+        self.leave_button.clicked.connect(self.leave_room)
+        self.leave_button.hide()
+
+        # Bottom Pomodoro Controls
         self.start_button = QPushButton("▶", self)
-        self.start_button.setGeometry(118, 207, 40, 32)
+        self.start_button.setGeometry(133, 290, 42, 32)
         self.start_button.clicked.connect(self.toggle_timer)
 
         self.break_button = QPushButton("☕", self)
-        self.break_button.setGeometry(164, 207, 40, 32)
+        self.break_button.setGeometry(181, 290, 42, 32)
         self.break_button.clicked.connect(self.toggle_break)
 
         self.reset_button = QPushButton("↻", self)
-        self.reset_button.setGeometry(210, 207, 30, 32)
+        self.reset_button.setGeometry(229, 290, 30, 32)
         self.reset_button.setToolTip("Reset Timer")
         self.reset_button.clicked.connect(self.reset_timer)
 
@@ -139,32 +163,7 @@ class WizardCat(QWidget):
     def update_button_styles(self):
         """Apply active theme color palette to control buttons."""
         t = self.theme
-        self.close_button.setStyleSheet(f"""
-            QPushButton {{
-                background-color: transparent;
-                color: {t['accent']};
-                border: none;
-                padding: 0px;
-                margin: 0px;
-                font-size: 16px;
-                font-weight: bold;
-            }}
-            QPushButton:hover {{ color: {t['text_primary']}; }}
-            QPushButton:pressed {{ color: {t['border']}; }}
-        """)
-
-        self.settings_button.setStyleSheet(f"""
-            QPushButton {{
-                background-color: transparent;
-                color: {t['accent']};
-                border: none;
-                font-size: 15px;
-            }}
-            QPushButton:hover {{ color: {t['text_primary']}; }}
-            QPushButton:pressed {{ color: {t['border']}; }}
-        """)
-
-        self.room_button.setStyleSheet(f"""
+        btn_style = f"""
             QPushButton {{
                 background-color: transparent;
                 color: {t['accent']};
@@ -173,7 +172,24 @@ class WizardCat(QWidget):
             }}
             QPushButton:hover {{ color: {t['text_primary']}; }}
             QPushButton:pressed {{ color: {t['border']}; }}
+        """
+
+        self.close_button.setStyleSheet(f"""
+            QPushButton {{
+                background-color: transparent;
+                color: {t['accent']};
+                border: none;
+                font-size: 16px;
+                font-weight: bold;
+            }}
+            QPushButton:hover {{ color: {t['text_primary']}; }}
         """)
+
+        self.settings_button.setStyleSheet(btn_style)
+        self.room_button.setStyleSheet(btn_style)
+        self.chat_button.setStyleSheet(btn_style)
+        self.copy_button.setStyleSheet(btn_style)
+        self.leave_button.setStyleSheet(btn_style)
 
         self.start_button.setStyleSheet(f"""
             QPushButton {{
@@ -226,6 +242,17 @@ class WizardCat(QWidget):
             QPushButton:hover {{ color: {t['text_primary']}; }}
         """)
 
+    def on_room_members_updated(self, member_list: list):
+        """Update embedded VirtualRoomCanvas when online room members update."""
+        self.canvas.set_members(member_list)
+
+    def on_room_chat_received(self, username: str, text: str, msg_type: str):
+        """Pass reactions to canvas and chat messages to drawer."""
+        if msg_type == "reaction":
+            self.canvas.add_reaction(username, text)
+        if self.chat_drawer:
+            self.chat_drawer.add_chat_message(username, text, msg_type)
+
     def broadcast_room_presence(self):
         """Immediately broadcast personal study stats and level to active room."""
         if not self.room_mgr or not self.room_mgr.room_code:
@@ -254,16 +281,7 @@ class WizardCat(QWidget):
         )
 
     def open_room_menu(self):
-        """Open multiplayer room creation/joining dialog or show active room chat panel."""
-        if self.room_mgr.room_code:
-            if not self.room_panel:
-                self.room_panel = RoomPanel(self, self.room_mgr)
-            self.broadcast_room_presence()
-            self.room_panel.show()
-            self.room_panel.raise_()
-            self.room_panel.activateWindow()
-            return
-
+        """Open multiplayer room creation/joining dialog."""
         dialog = RoomDialog(self, default_username=self.room_mgr.username)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             if dialog.action == "create":
@@ -275,17 +293,42 @@ class WizardCat(QWidget):
                 joined = False
 
             if joined:
-                self.room_panel = RoomPanel(self, self.room_mgr)
-                self.room_panel.set_room_code(self.room_mgr.room_code)
+                self.chat_button.show()
+                self.copy_button.show()
+                self.leave_button.show()
                 self.broadcast_room_presence()
-                self.room_panel.show()
+
+    def open_chat_drawer(self):
+        """Open or raise pop-over chat drawer."""
+        if not self.chat_drawer:
+            self.chat_drawer = RoomChatDrawer(self, self.room_mgr)
+        self.chat_drawer.show()
+        self.chat_drawer.raise_()
+        self.chat_drawer.activateWindow()
+
+    def copy_room_code(self):
+        """Copy active room code to clipboard."""
+        if self.room_mgr and self.room_mgr.room_code:
+            QGuiApplication.clipboard().setText(self.room_mgr.room_code)
+            self.show_notification("Room Code Copied!", f"Code {self.room_mgr.room_code} copied to clipboard.")
+
+    def leave_room(self):
+        """Leave current online room and switch back to solo cat mode."""
+        if self.room_mgr:
+            self.room_mgr.leave_room()
+        self.chat_button.hide()
+        self.copy_button.hide()
+        self.leave_button.hide()
+        if self.chat_drawer:
+            self.chat_drawer.close()
+            self.chat_drawer = None
+        self.canvas.set_members([])
 
     def open_settings(self):
         """Open settings dialog and apply updated preferences and theme."""
         was_running = self.timer.isActive()
         if was_running:
             self.timer.stop()
-            self.cat_movie.stop()
 
         dialog = SettingsDialog(self)
         result = dialog.exec()
@@ -301,11 +344,9 @@ class WizardCat(QWidget):
 
             self.theme_key = dialog.theme_combo.currentData()
             self.theme = get_theme(self.theme_key)
+            self.canvas.colors = self.theme
+            self.canvas.update()
             self.update_button_styles()
-
-            if self.room_panel:
-                self.room_panel.colors = self.theme
-                self.room_panel._apply_stylesheet()
 
             save_settings({
                 "work_minutes": self.work_minutes,
@@ -322,7 +363,6 @@ class WizardCat(QWidget):
 
         if was_running:
             self.timer.start()
-            self.cat_movie.start()
 
         self.setFocus()
 
@@ -345,7 +385,6 @@ class WizardCat(QWidget):
     def reset_timer(self):
         """Stop and reset timer back to initial session state."""
         self.timer.stop()
-        self.cat_movie.stop()
         self.remaining_seconds = self.total_seconds
         self.elapsed_seconds = 0
         self.worked_seconds_in_current_minute = 0
@@ -389,7 +428,6 @@ class WizardCat(QWidget):
     def finish_session(self):
         """Handle session completion state transitions and notifications."""
         self.timer.stop()
-        self.cat_movie.stop()
         self.worked_seconds_in_current_minute = 0
 
         if self.current_session == "work":
@@ -409,7 +447,6 @@ class WizardCat(QWidget):
 
             if self.auto_start_breaks:
                 self.timer.start()
-                self.cat_movie.start()
                 self.start_button.setText("Ⅱ")
 
         else:
@@ -420,21 +457,18 @@ class WizardCat(QWidget):
 
             if self.auto_start_focus:
                 self.timer.start()
-                self.cat_movie.start()
                 self.start_button.setText("Ⅱ")
 
         self.broadcast_room_presence()
         self.update()
 
     def toggle_timer(self):
-        """Start or pause the timer and cat animation."""
+        """Start or pause the timer."""
         if self.timer.isActive():
             self.timer.stop()
-            self.cat_movie.stop()
             self.start_button.setText("▶")
         else:
             self.timer.start()
-            self.cat_movie.start()
             self.start_button.setText("Ⅱ")
 
         self.broadcast_room_presence()
@@ -443,7 +477,6 @@ class WizardCat(QWidget):
     def toggle_break(self):
         """Switch manually between focus and break sessions."""
         self.timer.stop()
-        self.cat_movie.stop()
 
         if self.current_session == "work":
             self.current_session = "short_break"
@@ -467,7 +500,7 @@ class WizardCat(QWidget):
             )
 
     def paintEvent(self, event):
-        """Custom painter for background gradient, stars, sparkles, cat, RPG stats, and timer."""
+        """Custom painter for background gradient, stars, RPG stats, and Pomodoro controls."""
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         t = self.theme
@@ -499,40 +532,22 @@ class WizardCat(QWidget):
             painter.setBrush(QColor(t["stars"]))
             painter.drawRect(x, y, size, size)
 
-        # Sparkles
-        sparkles = [
-            (25, 110),
-            (105, 95),
-            (215, 105),
-            (290, 120),
-        ]
-        for x, y in sparkles:
-            painter.setBrush(QColor(t["sparkles"]))
-            painter.drawRect(x, y, 2, 2)
-            painter.drawRect(x - 2, y + 1, 6, 1)
-            painter.drawRect(x + 1, y - 2, 1, 6)
-
-        # RPG Level & Title Badge (Top Center)
+        # RPG Level & Title Badge (Top Left) or Room Code
         painter.setFont(self.badge_font)
         painter.setPen(QColor(t["badge"]))
-        rpg_text = f"✦ Lvl {self.rpg.level} • {self.rpg.title}"
-        painter.drawText(
-            10,
-            8,
-            220,
-            16,
-            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
-            rpg_text,
-        )
+        if self.room_mgr.room_code:
+            top_badge_text = f"Room: {self.room_mgr.room_code} • Lvl {self.rpg.level}"
+        else:
+            top_badge_text = f"✦ Lvl {self.rpg.level} • {self.rpg.title}"
 
-        # Cat GIF Frame
-        if self.cat_movie.isValid():
-            cat_width = 120
-            cat_height = 120
-            cat_x = (self.width() - cat_width) // 2
-            cat_y = 24
-            current_frame = self.cat_movie.currentPixmap()
-            painter.drawPixmap(cat_x, cat_y, cat_width, cat_height, current_frame)
+        painter.drawText(
+            12,
+            6,
+            170,
+            24,
+            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
+            top_badge_text,
+        )
 
         # Timer Text
         painter.setFont(self.timer_font)
@@ -549,9 +564,9 @@ class WizardCat(QWidget):
 
         painter.drawText(
             0,
-            140,
+            215,
             self.width(),
-            38,
+            36,
             Qt.AlignmentFlag.AlignCenter,
             time_text,
         )
@@ -571,17 +586,17 @@ class WizardCat(QWidget):
         painter.setPen(session_color)
         painter.drawText(
             0,
-            178,
+            253,
             self.width(),
             16,
             Qt.AlignmentFlag.AlignCenter,
             session_text,
         )
 
-        # EXP Progress Bar (Above Buttons)
-        exp_bar_x = 40
-        exp_bar_y = 196
-        exp_bar_w = 240
+        # EXP Progress Bar (Above Control Buttons)
+        exp_bar_x = 45
+        exp_bar_y = 276
+        exp_bar_w = 260
         exp_bar_h = 5
 
         # Background track
@@ -609,19 +624,19 @@ class WizardCat(QWidget):
         )
         painter.drawText(
             15,
-            238,
+            338,
             80,
-            10,
+            12,
             Qt.AlignmentFlag.AlignLeft,
             counter_text,
         )
 
         exp_text = f"{self.rpg.exp}/{self.rpg.required_exp} EXP"
         painter.drawText(
-            195,
-            238,
+            225,
+            338,
             110,
-            10,
+            12,
             Qt.AlignmentFlag.AlignRight,
             exp_text,
         )
