@@ -220,7 +220,7 @@ class RoomPanel(QDialog):
         self.colors = get_theme(theme_key)
         self._apply_stylesheet()
 
-        # Top Bar: Room Code, Shrink, Copy, Leave
+        # Top Bar: Room Code, Shrink (_), Copy Code, Leave Room
         self.code_label = QLabel("Room Code: -")
         self.code_label.setStyleSheet(f"""
             QLabel {{
@@ -230,11 +230,11 @@ class RoomPanel(QDialog):
             }}
         """)
 
-        self.shrink_btn = QPushButton("_")
-        self.shrink_btn.setToolTip("Shrink to Mini Floating Timer")
+        self.shrink_btn = QPushButton("_ Shrink")
+        self.shrink_btn.setToolTip("Shrink Online Room to Mini Floating Timer")
         self.shrink_btn.clicked.connect(self._shrink)
 
-        self.copy_btn = QPushButton("📋 Copy Code")
+        self.copy_btn = QPushButton("📋 Copy")
         self.copy_btn.clicked.connect(self._copy_code)
 
         self.leave_btn = QPushButton("🚪 Leave Room")
@@ -419,7 +419,7 @@ class RoomPanel(QDialog):
         if self.room_manager and self.room_manager.room_code:
             QGuiApplication.clipboard().setText(self.room_manager.room_code)
             self.copy_btn.setText("✓ Copied!")
-            QGuiApplication.singleShot(2000, lambda: self.copy_btn.setText("📋 Copy Code"))
+            QGuiApplication.singleShot(2000, lambda: self.copy_btn.setText("📋 Copy"))
 
     def _leave_room(self):
         if self.room_manager:
