@@ -253,10 +253,11 @@ class RoomPanel(QDialog):
             emotes_layout.addWidget(btn)
         emotes_layout.addStretch()
 
-        # Live Chat Box
+        # Live Chat Box (Compact spacing without extra blank lines)
         self.chat_display = QTextEdit()
         self.chat_display.setReadOnly(True)
-        self.chat_display.setFixedHeight(85)
+        self.chat_display.setFixedHeight(95)
+        self.chat_display.document().setDocumentMargin(3)
 
         self.chat_input = QLineEdit()
         self.chat_input.setPlaceholderText("Type a message in room chat...")
@@ -356,12 +357,12 @@ class RoomPanel(QDialog):
             return
 
         if msg_type == "system":
-            formatted = f"<i><b>system:</b> {username} {text}</i><br>"
+            formatted = f"<span style='color: #A0A0A0;'><i><b>system:</b> {username} {text}</i></span>"
         elif msg_type == "level_up":
-            formatted = f"<b style='color: #FFD966;'>✨ {username}:</b> {text}<br>"
+            formatted = f"<span style='color: #FFD966;'><b>✨ {username}:</b> {text}</span>"
             self.canvas.add_reaction(username, "✨")
         else:
-            formatted = f"<b>{username}:</b> {text}<br>"
+            formatted = f"<b>{username}:</b> {text}"
 
         self.chat_display.append(formatted)
 
@@ -448,7 +449,7 @@ class RoomPanel(QDialog):
                 color: {c['text_primary']};
                 border: 1px solid {c['border']};
                 border-radius: 6px;
-                padding: 4px;
+                padding: 2px 4px;
                 font-size: 11px;
             }}
             QLineEdit {{
