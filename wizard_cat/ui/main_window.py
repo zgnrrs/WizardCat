@@ -15,8 +15,11 @@ from PySide6.QtWidgets import (
 )
 
 from wizard_cat.config import load_settings, save_settings
+from wizard_cat.room import RoomManager
 from wizard_cat.rpg import load_rpg_stats, save_rpg_stats
 from wizard_cat.themes import get_theme
+from wizard_cat.ui.chat_drawer import RoomPanel
+from wizard_cat.ui.room_dialog import RoomDialog
 from wizard_cat.ui.settings_dialog import SettingsDialog
 from wizard_cat.utils import resource_path
 
@@ -49,6 +52,10 @@ class WizardCat(QWidget):
         self.theme = get_theme(self.theme_key)
 
         self.rpg = load_rpg_stats()
+
+        # Multiplayer Room Manager
+        self.room_mgr = RoomManager()
+        self.room_panel = None
 
         # Font Setup
         font_id = QFontDatabase.addApplicationFont(
@@ -107,6 +114,12 @@ class WizardCat(QWidget):
         self.settings_button.setGeometry(266, 8, 24, 24)
         self.settings_button.clicked.connect(self.open_settings)
 
+        # Room / Chat Button (👥)
+        self.room_button = QPushButton("👥", self)
+        self.room_button.setGeometry(238, 8, 24, 24)
+        self.room_button.setToolTip("Birlikte Çalışma Odası & Sohbet")
+        self.room_button.clicked.connect(self.open_room_menu)
+
         self.start_button = QPushButton("▶", self)
         self.start_button.setGeometry(118, 207, 40, 32)
         self.start_button.clicked.connect(self.toggle_timer)
@@ -115,7 +128,6 @@ class WizardCat(QWidget):
         self.break_button.setGeometry(164, 207, 40, 32)
         self.break_button.clicked.connect(self.toggle_break)
 
-        # Reset / Restart Button (↻)
         self.reset_button = QPushButton("↻", self)
         self.reset_button.setGeometry(210, 207, 30, 32)
         self.reset_button.setToolTip("Zamanlayıcıyı Sıfırla (Reset)")
@@ -146,6 +158,17 @@ class WizardCat(QWidget):
                 color: {t['accent']};
                 border: none;
                 font-size: 15px;
+            }}
+            QPushButton:hover {{ color: {t['text_primary']}; }}
+            QPushButton:pressed {{ color: {t['border']}; }}
+        """)
+
+        self.room_button.setStyleSheet(f"""
+            QPushButton {{
+                background-color: transparent;
+                color: {t['accent']};
+                border: none;
+                font-size: 14px;
             }}
             QPushButton:hover {{ color: {t['text_primary']}; }}
             QPushButton:pressed {{ color: {t['border']}; }}
@@ -202,6 +225,31 @@ class WizardCat(QWidget):
             QPushButton:hover {{ color: {t['text_primary']}; }}
         """)
 
+    def open_room_menu(self):
+        """Open multiplayer room creation/joining dialog or show active room chat panel."""
+        if self.room_mgr.room_code:
+            if not self.room_panel:
+                self.room_panel = RoomPanel(self, self.room_mgr)
+            self.room_panel.show()
+            self.room_panel.raise_()
+            self.room_panel.activateWindow()
+            return
+
+        dialog = RoomDialog(self, default_username=self.room_mgr.username)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            if dialog.action == "create":
+                code = self.room_mgr.generate_room_code()
+                joined = self.room_mgr.connect_and_join(code, dialog.username)
+            elif dialog.action == "join":
+                joined = self.room_mgr.connect_and_join(dialog.room_code, dialog.username)
+            else:
+                joined = False
+
+            if joined:
+                self.room_panel = RoomPanel(self, self.room_mgr)
+                self.room_panel.set_room_code(self.room_mgr.room_code)
+                self.room_panel.show()
+
     def open_settings(self):
         """Open settings dialog and apply updated preferences and theme."""
         was_running = self.timer.isActive()
@@ -224,6 +272,10 @@ class WizardCat(QWidget):
             self.theme_key = dialog.theme_combo.currentData()
             self.theme = get_theme(self.theme_key)
             self.update_button_styles()
+
+            if self.room_panel:
+                self.room_panel.colors = self.theme
+                self.room_panel._apply_stylesheet()
 
             save_settings({
                 "work_minutes": self.work_minutes,
@@ -271,7 +323,7 @@ class WizardCat(QWidget):
         self.setFocus()
 
     def update_timer(self):
-        """Timer tick handler called every second with minute-by-minute EXP calculation."""
+        """Timer tick handler called every second with minute-by-minute EXP calculation and room presence."""
         # Award 2 EXP for every 60 seconds worked in focus mode
         if self.current_session == "work":
             self.worked_seconds_in_current_minute += 1
@@ -286,6 +338,7 @@ class WizardCat(QWidget):
                         f"✨ LEVEL UP! (Lvl {new_level})",
                         f"Tebrikler! Yeni Unvanın: {new_title} 🪄",
                     )
+                    self.room_mgr.announce_level_up(new_level, new_title)
 
         if self.timer_mode == "countdown":
             if self.remaining_seconds > 0:
@@ -296,6 +349,20 @@ class WizardCat(QWidget):
             self.elapsed_seconds += 1
             if self.elapsed_seconds >= self.total_seconds:
                 self.finish_session()
+
+        # Broadcast presence heartbeat to room if in an active room
+        if self.room_mgr.room_code:
+            display_seconds = (
+                self.remaining_seconds
+                if self.timer_mode == "countdown"
+                else self.elapsed_seconds
+            )
+            time_str = f"{display_seconds // 60:02d}:{display_seconds % 60:02d}"
+            status = "FOCUSING" if self.current_session == "work" else "ON BREAK"
+            self.room_mgr.broadcast_presence(
+                self.rpg.level, self.rpg.title, status, time_str
+            )
+
         self.update()
 
     def finish_session(self):
@@ -427,7 +494,7 @@ class WizardCat(QWidget):
         painter.drawText(
             10,
             8,
-            245,
+            220,
             16,
             Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
             rpg_text,
@@ -562,3 +629,9 @@ class WizardCat(QWidget):
     def mouseReleaseEvent(self, event):
         """Window drag release handler."""
         self.drag_position = None
+
+    def closeEvent(self, event):
+        """Cleanly leave active study room when window closes."""
+        if self.room_mgr:
+            self.room_mgr.leave_room()
+        super().closeEvent(event)
