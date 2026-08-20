@@ -69,7 +69,7 @@ class RoomManager(QObject):
                     bye_payload = json.dumps({
                         "user_id": self.user_id,
                         "username": self.username,
-                        "text": "odadan ayrıldı.",
+                        "text": "left the room.",
                         "type": "system",
                     })
                     self.client.publish(f"wizardcat/v1/room/{self.room_code}/chat", bye_payload)
@@ -129,7 +129,7 @@ class RoomManager(QObject):
         """Broadcast level-up announcement to room chat."""
         if not self.room_code:
             return
-        msg = f"✨ LEVEL UP! Seviye {new_level} oldu ve '{new_title}' unvanını kazandı! 🪄"
+        msg = f"✨ LEVEL UP! Reached Level {new_level} and earned the title '{new_title}'! 🪄"
         self.send_chat_message(msg, msg_type="level_up")
 
     def _on_connect(self, client, userdata, flags, rc):
@@ -146,7 +146,7 @@ class RoomManager(QObject):
             welcome_payload = json.dumps({
                 "user_id": self.user_id,
                 "username": self.username,
-                "text": "odaya katıldı! 🪄",
+                "text": "joined the room! 🪄",
                 "type": "system",
             })
             self.client.publish(chat_topic, welcome_payload)
@@ -164,7 +164,7 @@ class RoomManager(QObject):
                     self._purge_stale_members()
 
             elif topic.endswith("/chat"):
-                user = payload.get("username", "Büyücü")
+                user = payload.get("username", "Wizard")
                 text = payload.get("text", "")
                 mtype = payload.get("type", "chat")
                 self.chat_received.emit(user, text, mtype)

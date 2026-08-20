@@ -94,7 +94,7 @@ def load_rpg_stats() -> RPGStats:
             data = json.load(f)
         return RPGStats.from_dict(data)
     except Exception as error:
-        print("RPG stats yüklenemedi:", error)
+        print("Failed to load RPG stats:", error)
         return RPGStats()
 
 
@@ -104,4 +104,4 @@ def save_rpg_stats(stats: RPGStats) -> None:
         with open(RPG_FILE, "w", encoding="utf-8") as f:
             json.dump(stats.to_dict(), f, indent=4, ensure_ascii=False)
     except Exception as error:
-        print("RPG stats kaydedilemedi:", error)
+        print("Failed to save RPG stats:", error)

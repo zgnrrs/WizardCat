@@ -28,7 +28,7 @@ def load_settings() -> dict:
         settings.update(data)
         return settings
     except Exception as error:
-        print("Ayarlar yüklenemedi:", error)
+        print("Failed to load settings:", error)
         return DEFAULT_SETTINGS.copy()
 
 
@@ -38,4 +38,4 @@ def save_settings(settings: dict) -> None:
         with open(SETTINGS_FILE, "w", encoding="utf-8") as file:
             json.dump(settings, file, indent=4, ensure_ascii=False)
     except Exception as error:
-        print("Ayarlar kaydedilemedi:", error)
+        print("Failed to save settings:", error)

@@ -16,7 +16,7 @@ class RoomDialog(QDialog):
 
     def __init__(self, parent=None, default_username="WizardCat"):
         super().__init__(parent)
-        self.setWindowTitle("Birlikte Çalışma Odası (Multiplayer)")
+        self.setWindowTitle("Multiplayer Study Room")
         self.setFixedSize(340, 290)
 
         theme_key = getattr(parent, "theme_key", "wizard_purple")
@@ -30,25 +30,25 @@ class RoomDialog(QDialog):
         # Inputs
         self.username_input = QLineEdit()
         self.username_input.setText(default_username)
-        self.username_input.setPlaceholderText("Büyücü adınız...")
+        self.username_input.setPlaceholderText("Your wizard name...")
 
         self.room_code_input = QLineEdit()
-        self.room_code_input.setPlaceholderText("Örn: CAT-4029")
+        self.room_code_input.setPlaceholderText("e.g. CAT-4029")
 
         # Layout
         form = QFormLayout()
         form.setSpacing(12)
-        form.addRow("Kullanıcı Adı:", self.username_input)
-        form.addRow("Oda Kodu (Katıl):", self.room_code_input)
+        form.addRow("Wizard Name:", self.username_input)
+        form.addRow("Room Code (Join):", self.room_code_input)
 
         # Buttons
-        create_btn = QPushButton("✨ Yeni Oda Oluştur")
+        create_btn = QPushButton("✨ Create New Room")
         create_btn.clicked.connect(self._on_create)
 
-        join_btn = QPushButton("🚀 Odaya Katıl")
+        join_btn = QPushButton("🚀 Join Room")
         join_btn.clicked.connect(self._on_join)
 
-        cancel_btn = QPushButton("İptal")
+        cancel_btn = QPushButton("Cancel")
         cancel_btn.clicked.connect(self.reject)
 
         btn_layout = QHBoxLayout()
@@ -56,7 +56,7 @@ class RoomDialog(QDialog):
         btn_layout.addWidget(join_btn)
 
         layout = QVBoxLayout()
-        title = QLabel("👥  Birlikte Çalışma Odası")
+        title = QLabel("👥  Multiplayer Study Room")
         title.setStyleSheet(f"""
             QLabel {{
                 color: {self.colors['accent']};
@@ -65,7 +65,7 @@ class RoomDialog(QDialog):
             }}
         """)
 
-        subtitle = QLabel("Arkadaşlarınızla aynı oda kodunu paylaşarak birlikte çalışın ve sohbet edin!")
+        subtitle = QLabel("Share the room code with friends to gather your wizard cats and study together!")
         subtitle.setWordWrap(True)
         subtitle.setStyleSheet(f"color: {self.colors['text_secondary']}; font-size: 11px;")
 

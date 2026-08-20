@@ -27,7 +27,7 @@ from wizard_cat.utils import resource_path
 
 
 class VirtualRoomCanvas(QWidget):
-    """Custom canvas displaying online room members as Wizard Cats with personal total study time stats."""
+    """Custom canvas displaying online room members as Wizard Cats arranged in a virtual study lounge."""
 
     def __init__(self, parent=None, colors=None):
         super().__init__(parent)
@@ -104,38 +104,31 @@ class VirtualRoomCanvas(QWidget):
             painter.drawRect(sx, sy, 2, 2)
 
         if not self.members:
-            # Empty Room Message
+            # Connecting / Empty Room Message
             painter.setFont(QFont("Arial", 10))
             painter.setPen(QColor(c["text_secondary"]))
             painter.drawText(
                 self.rect(),
                 Qt.AlignmentFlag.AlignCenter,
-                "Oda yükleniyor...\nKediniz ve arkadaşlarınız belirmek üzere! 🪄",
+                "Connecting to study room...\nWizard cats will gather here as friends join! 🪄",
             )
             return
 
-        # Render Cats on Virtual Room Floor
+        # Render Cats side-by-side on Virtual Room Floor
         count = len(self.members)
         cat_w, cat_h = 70, 70
 
-        # Calculate position slots across virtual floor
+        # Calculate neat row positions across virtual floor
         positions = []
-        if count == 1:
-            positions = [(self.width() // 2, self.height() // 2 + 10)]
-        elif count == 2:
-            positions = [
-                (self.width() // 3, self.height() // 2 + 10),
-                (2 * self.width() // 3, self.height() // 2 + 10),
-            ]
-        else:
-            cols = min(3, count)
-            rows = (count + cols - 1) // cols
-            for i in range(count):
-                r = i // cols
-                col = i % cols
-                x = int((col + 0.6) * (self.width() / cols))
-                y = int(85 + r * 85)
-                positions.append((x, y))
+        cols = 3
+        for i in range(count):
+            r = i // cols
+            col = i % cols
+            row_count = min(cols, count - r * cols)
+            x_step = self.width() / (row_count + 1)
+            x = int((col + 1) * x_step)
+            y = int(85 + r * 85)
+            positions.append((x, y))
 
         current_frame = self.cat_movie.currentPixmap() if self.cat_movie.isValid() else QPixmap()
 
@@ -153,16 +146,16 @@ class VirtualRoomCanvas(QWidget):
             session_mins = member.get("session_minutes", 0)
 
             if total_mins < 60:
-                total_str = f"{total_mins} dk"
+                total_str = f"{total_mins}m"
             else:
-                total_str = f"{total_mins // 60}s {total_mins % 60}dk"
+                total_str = f"{total_mins // 60}h {total_mins % 60}m"
 
             # Shadow under cat
             painter.setBrush(QColor(0, 0, 0, 80))
             painter.setPen(Qt.PenStyle.NoPen)
             painter.drawEllipse(cx - 25, cy + cat_h // 2 - 8, 50, 14)
 
-            # Cat Graphic
+            # Cat Graphic (Same Wizard Cat for all members)
             if not current_frame.isNull():
                 painter.drawPixmap(cx - cat_w // 2, cy - cat_h // 2, cat_w, cat_h, current_frame)
 
@@ -187,9 +180,9 @@ class VirtualRoomCanvas(QWidget):
             painter.setFont(QFont("Arial", 8, QFont.Weight.Bold))
 
             if status == "FOCUSING":
-                personal_stat_str = f"⏱️ Toplam: {total_str} ({session_mins}dk)"
+                personal_stat_str = f"⏱️ Total: {total_str} ({session_mins}m)"
             else:
-                personal_stat_str = f"☕ Molada ({total_str} çalıştı)"
+                personal_stat_str = f"☕ On Break ({total_str})"
 
             painter.drawText(
                 QRectF(cx - 75, cy - cat_h // 2 - 20, 150, 15),
@@ -219,7 +212,7 @@ class RoomPanel(QDialog):
     def __init__(self, parent=None, room_manager=None):
         super().__init__(parent)
         self.room_manager = room_manager
-        self.setWindowTitle("Wizard Cat - Sanal Birlikte Çalışma Odası")
+        self.setWindowTitle("Wizard Cat - Virtual Study Lounge")
         self.setFixedSize(380, 520)
 
         theme_key = getattr(parent, "theme_key", "wizard_purple")
@@ -227,7 +220,7 @@ class RoomPanel(QDialog):
         self._apply_stylesheet()
 
         # Room Code Header
-        self.code_label = QLabel("Oda Kodu: -")
+        self.code_label = QLabel("Room Code: -")
         self.code_label.setStyleSheet(f"""
             QLabel {{
                 color: {self.colors['accent']};
@@ -236,10 +229,10 @@ class RoomPanel(QDialog):
             }}
         """)
 
-        self.copy_btn = QPushButton("📋 Kopyala")
+        self.copy_btn = QPushButton("📋 Copy Code")
         self.copy_btn.clicked.connect(self._copy_code)
 
-        self.leave_btn = QPushButton("🚪 Odadan Ayrıl")
+        self.leave_btn = QPushButton("🚪 Leave Room")
         self.leave_btn.clicked.connect(self._leave_room)
 
         top_bar = QHBoxLayout()
@@ -253,7 +246,7 @@ class RoomPanel(QDialog):
 
         # Quick Reaction Emote Buttons
         emotes_layout = QHBoxLayout()
-        emotes_label = QLabel("Reaksiyon:")
+        emotes_label = QLabel("Reactions:")
         emotes_label.setStyleSheet("font-weight: bold; font-size: 11px;")
         emotes_layout.addWidget(emotes_label)
 
@@ -270,10 +263,10 @@ class RoomPanel(QDialog):
         self.chat_display.setFixedHeight(90)
 
         self.chat_input = QLineEdit()
-        self.chat_input.setPlaceholderText("Oda sohbetine yazın...")
+        self.chat_input.setPlaceholderText("Type a message in room chat...")
         self.chat_input.returnPressed.connect(self._send_chat)
 
-        send_btn = QPushButton("Gönder")
+        send_btn = QPushButton("Send")
         send_btn.clicked.connect(self._send_chat)
 
         input_layout = QHBoxLayout()
@@ -298,7 +291,7 @@ class RoomPanel(QDialog):
             self.room_manager.room_joined.connect(self.set_room_code)
 
     def set_room_code(self, code: str):
-        self.code_label.setText(f"Oda Kodu: {code}")
+        self.code_label.setText(f"Room Code: {code}")
 
     def on_members_updated(self, member_list: list):
         self.canvas.set_members(member_list)
@@ -332,8 +325,8 @@ class RoomPanel(QDialog):
     def _copy_code(self):
         if self.room_manager and self.room_manager.room_code:
             QGuiApplication.clipboard().setText(self.room_manager.room_code)
-            self.copy_btn.setText("✓ Kopyalandı!")
-            QGuiApplication.singleShot(2000, lambda: self.copy_btn.setText("📋 Kopyala"))
+            self.copy_btn.setText("✓ Copied!")
+            QGuiApplication.singleShot(2000, lambda: self.copy_btn.setText("📋 Copy Code"))
 
     def _leave_room(self):
         if self.room_manager:

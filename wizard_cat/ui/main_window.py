@@ -112,12 +112,13 @@ class WizardCat(QWidget):
 
         self.settings_button = QPushButton("⚙", self)
         self.settings_button.setGeometry(266, 8, 24, 24)
+        self.settings_button.setToolTip("Settings")
         self.settings_button.clicked.connect(self.open_settings)
 
         # Room / Chat Button (👥)
         self.room_button = QPushButton("👥", self)
         self.room_button.setGeometry(238, 8, 24, 24)
-        self.room_button.setToolTip("Birlikte Çalışma Odası & Sohbet")
+        self.room_button.setToolTip("Multiplayer Study Room & Chat")
         self.room_button.clicked.connect(self.open_room_menu)
 
         self.start_button = QPushButton("▶", self)
@@ -130,7 +131,7 @@ class WizardCat(QWidget):
 
         self.reset_button = QPushButton("↻", self)
         self.reset_button.setGeometry(210, 207, 30, 32)
-        self.reset_button.setToolTip("Zamanlayıcıyı Sıfırla (Reset)")
+        self.reset_button.setToolTip("Reset Timer")
         self.reset_button.clicked.connect(self.reset_timer)
 
         self.update_button_styles()
@@ -367,7 +368,7 @@ class WizardCat(QWidget):
                 if leveled_up:
                     self.show_notification(
                         f"✨ LEVEL UP! (Lvl {new_level})",
-                        f"Tebrikler! Yeni Unvanın: {new_title} 🪄",
+                        f"Congratulations! Your new title: {new_title} 🪄",
                     )
                     self.room_mgr.announce_level_up(new_level, new_title)
 
@@ -394,8 +395,8 @@ class WizardCat(QWidget):
         if self.current_session == "work":
             self.completed_sessions += 1
             self.show_notification(
-                "Focus session tamamlandı! ✨",
-                "Biraz dinlenme zamanı.",
+                "Focus Session Completed! ✨",
+                "Time for a break.",
             )
 
             if self.completed_sessions % self.sessions_before_long_break == 0:
@@ -412,7 +413,7 @@ class WizardCat(QWidget):
                 self.start_button.setText("Ⅱ")
 
         else:
-            self.show_notification("Mola bitti! 🪄", "Yeni bir focus zamanı.")
+            self.show_notification("Break Over! 🪄", "Time for a new focus session.")
             self.current_session = "work"
             self.reset_current_session()
             self.start_button.setText("▶")
