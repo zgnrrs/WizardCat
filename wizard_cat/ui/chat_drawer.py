@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QProgressBar,
     QPushButton,
     QTextEdit,
     QVBoxLayout,
@@ -281,6 +282,12 @@ class RoomPanel(QDialog):
         self.session_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.session_label.setFont(main_window.small_font)
 
+        # Pomodoro Timer Progress Bar (Fills parallel with active timer)
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setFixedHeight(5)
+        self.progress_bar.setRange(0, 1000)
+        self.progress_bar.setTextVisible(False)
+
         # Controls Buttons
         self.start_btn = QPushButton("▶")
         self.start_btn.setFixedSize(50, 32)
@@ -308,6 +315,9 @@ class RoomPanel(QDialog):
 
         timer_box.addWidget(self.timer_readout)
         timer_box.addWidget(self.session_label)
+        timer_box.addSpacing(2)
+        timer_box.addWidget(self.progress_bar)
+        timer_box.addSpacing(4)
         timer_box.addLayout(ctrl_layout)
 
         # Apply Stylesheet
@@ -326,7 +336,7 @@ class RoomPanel(QDialog):
         layout.addLayout(emotes_layout)
         layout.addWidget(self.chat_display)
         layout.addLayout(input_layout)
-        layout.addSpacing(6)
+        layout.addSpacing(4)
         layout.addLayout(timer_box)
 
         self.setLayout(layout)
@@ -367,12 +377,23 @@ class RoomPanel(QDialog):
         self.chat_display.append(formatted)
 
     def _sync_timer_display(self):
-        """Sync room timer controls display with main_window timer state."""
+        """Sync room timer controls display and progress bar with main_window timer state."""
         mw = self.main_window
         display_seconds = mw.remaining_seconds if mw.timer_mode == "countdown" else mw.elapsed_seconds
         m, s = display_seconds // 60, display_seconds % 60
         self.timer_readout.setText(f"{m:02d}:{s:02d}")
         self.timer_readout.setStyleSheet(f"color: {self.colors['text_primary']};")
+
+        # Sync Progress Bar in parallel with timer
+        if mw.total_seconds > 0:
+            if mw.timer_mode == "countdown":
+                ratio = max(0.0, min(1.0, (mw.total_seconds - mw.remaining_seconds) / mw.total_seconds))
+            else:
+                ratio = max(0.0, min(1.0, mw.elapsed_seconds / mw.total_seconds))
+        else:
+            ratio = 0.0
+
+        self.progress_bar.setValue(int(ratio * 1000))
 
         if mw.current_session == "work":
             self.session_label.setText("FOCUS")
@@ -458,6 +479,15 @@ class RoomPanel(QDialog):
                 border: 1px solid {c['border']};
                 border-radius: 6px;
                 padding: 5px;
+            }}
+            QProgressBar {{
+                background-color: {c['input_bg']};
+                border: 1px solid {c['border']};
+                border-radius: 2px;
+            }}
+            QProgressBar::chunk {{
+                background-color: {c['accent']};
+                border-radius: 2px;
             }}
             QPushButton {{
                 background-color: {c['dialog_bg']};

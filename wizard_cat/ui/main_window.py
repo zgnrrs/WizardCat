@@ -509,7 +509,7 @@ class WizardCat(QWidget):
             )
 
     def paintEvent(self, event):
-        """Custom painter for background gradient, stars, sparkles, cat, RPG stats, and timer."""
+        """Custom painter for background gradient, stars, sparkles, cat, RPG stats, and Pomodoro timer progress bar."""
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         t = self.theme
@@ -620,27 +620,57 @@ class WizardCat(QWidget):
             session_text,
         )
 
-        # EXP Progress Bar (Above Buttons)
-        exp_bar_x = 40
-        exp_bar_y = 196
-        exp_bar_w = 240
-        exp_bar_h = 5
+        # Pomodoro Timer Progress Bar (Fills in parallel with active timer)
+        timer_bar_x = 40
+        timer_bar_y = 196
+        timer_bar_w = 240
+        timer_bar_h = 5
 
         # Background track
         painter.setBrush(QColor(t["input_bg"]))
         painter.setPen(QColor(t["border"]))
-        painter.drawRoundedRect(exp_bar_x, exp_bar_y, exp_bar_w, exp_bar_h, 2, 2)
+        painter.drawRoundedRect(timer_bar_x, timer_bar_y, timer_bar_w, timer_bar_h, 2, 2)
 
-        # Filled progress
-        fill_ratio = min(1.0, self.rpg.exp / self.rpg.required_exp)
+        # Calculate timer progress ratio (0.0 to 1.0)
+        if self.total_seconds > 0:
+            if self.timer_mode == "countdown":
+                fill_ratio = max(
+                    0.0,
+                    min(
+                        1.0,
+                        (self.total_seconds - self.remaining_seconds)
+                        / self.total_seconds,
+                    ),
+                )
+            else:
+                fill_ratio = max(
+                    0.0,
+                    min(1.0, self.elapsed_seconds / self.total_seconds),
+                )
+        else:
+            fill_ratio = 0.0
+
         if fill_ratio > 0:
-            fill_w = max(4, int(exp_bar_w * fill_ratio))
-            exp_gradient = QLinearGradient(exp_bar_x, 0, exp_bar_x + fill_w, 0)
-            exp_gradient.setColorAt(0.0, QColor(t["exp_bar_gradient"][0]))
-            exp_gradient.setColorAt(1.0, QColor(t["exp_bar_gradient"][1]))
-            painter.setBrush(exp_gradient)
+            fill_w = max(4, int(timer_bar_w * fill_ratio))
+            bar_gradient = QLinearGradient(timer_bar_x, 0, timer_bar_x + fill_w, 0)
+
+            # Color gradient matches current active session (Focus / Short Break / Long Break)
+            if self.current_session == "work":
+                start_c = QColor(t["exp_bar_gradient"][0])
+                end_c = QColor(t["exp_bar_gradient"][1])
+            elif self.current_session == "short_break":
+                start_c = QColor(t["session_short"])
+                end_c = QColor(t["accent"])
+            else:
+                start_c = QColor(t["session_long"])
+                end_c = QColor(t["accent"])
+
+            bar_gradient.setColorAt(0.0, start_c)
+            bar_gradient.setColorAt(1.0, end_c)
+
+            painter.setBrush(bar_gradient)
             painter.setPen(Qt.PenStyle.NoPen)
-            painter.drawRoundedRect(exp_bar_x, exp_bar_y, fill_w, exp_bar_h, 2, 2)
+            painter.drawRoundedRect(timer_bar_x, timer_bar_y, fill_w, timer_bar_h, 2, 2)
 
         # Bottom Bar: Pomodoro Counter (Left) & EXP Counter (Right)
         painter.setFont(QFont(self.small_font.family(), 7))
