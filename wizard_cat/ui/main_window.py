@@ -293,10 +293,14 @@ class WizardCat(QWidget):
         time_str = f"{display_seconds // 60:02d}:{display_seconds % 60:02d}"
         status = "FOCUSING" if self.current_session == "work" else "ON BREAK"
 
-        if self.timer_mode == "countdown":
-            session_mins = (self.total_seconds - self.remaining_seconds) // 60
+        if self.current_session == "work":
+            if self.timer_mode == "countdown":
+                session_secs = max(0, self.total_seconds - self.remaining_seconds)
+            else:
+                session_secs = self.elapsed_seconds
+            session_mins = session_secs // 60
         else:
-            session_mins = self.elapsed_seconds // 60
+            session_mins = 0
 
         self.room_mgr.broadcast_presence(
             level=self.rpg.level,
@@ -304,7 +308,7 @@ class WizardCat(QWidget):
             status=status,
             time_str=time_str,
             total_focus_minutes=self.rpg.total_focus_minutes,
-            session_minutes=max(0, session_mins),
+            session_minutes=session_mins,
         )
 
     def open_room_menu(self):

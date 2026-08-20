@@ -41,9 +41,9 @@ class CompactTimerWidget(QWidget):
         )
         if font_id != -1:
             font_family = QFontDatabase.applicationFontFamilies(font_id)[0]
-            self.timer_font = QFont(font_family, 11)
+            self.timer_font = QFont(font_family, 10)
         else:
-            self.timer_font = QFont("Arial", 14, QFont.Weight.Bold)
+            self.timer_font = QFont("Arial", 13, QFont.Weight.Bold)
 
         # Glow Animation State
         self.is_glowing = False
@@ -106,17 +106,17 @@ class CompactTimerWidget(QWidget):
         painter.setPen(border_color)
         painter.drawRoundedRect(rect.adjusted(2, 2, -2, -2), 14, 14)
 
-        # Session Icon & Timer Text
+        # Perfectly Centered Hourglass Icon & Timer Text
         painter.setFont(self.timer_font)
         painter.setPen(QColor(t["text_primary"]))
 
         icon = "⏳" if self.session_type == "work" else "☕"
-        display = f"{icon} {self.timer_text}"
+        display_text = f"{icon} {self.timer_text}"
 
         painter.drawText(
             rect,
             Qt.AlignmentFlag.AlignCenter,
-            display,
+            display_text,
         )
 
     def mousePressEvent(self, event):
