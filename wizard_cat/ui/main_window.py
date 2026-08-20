@@ -53,7 +53,7 @@ class WizardCat(QWidget):
 
         self.rpg = load_rpg_stats()
 
-        # Multiplayer Room Manager
+        # Multiplayer Room Manager & Room Window
         self.room_mgr = RoomManager()
         self.room_panel = None
 
@@ -254,16 +254,7 @@ class WizardCat(QWidget):
         )
 
     def open_room_menu(self):
-        """Open multiplayer room creation/joining dialog or show active room chat panel."""
-        if self.room_mgr.room_code:
-            if not self.room_panel:
-                self.room_panel = RoomPanel(self, self.room_mgr)
-            self.broadcast_room_presence()
-            self.room_panel.show()
-            self.room_panel.raise_()
-            self.room_panel.activateWindow()
-            return
-
+        """Open multiplayer room creation/joining dialog and replace main window with room window."""
         dialog = RoomDialog(self, default_username=self.room_mgr.username)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             if dialog.action == "create":
@@ -275,6 +266,7 @@ class WizardCat(QWidget):
                 joined = False
 
             if joined:
+                self.hide()  # Hide main window when entering room window
                 self.room_panel = RoomPanel(self, self.room_mgr)
                 self.room_panel.set_room_code(self.room_mgr.room_code)
                 self.broadcast_room_presence()
@@ -285,7 +277,6 @@ class WizardCat(QWidget):
         was_running = self.timer.isActive()
         if was_running:
             self.timer.stop()
-            self.cat_movie.stop()
 
         dialog = SettingsDialog(self)
         result = dialog.exec()
@@ -322,7 +313,6 @@ class WizardCat(QWidget):
 
         if was_running:
             self.timer.start()
-            self.cat_movie.start()
 
         self.setFocus()
 
@@ -345,7 +335,6 @@ class WizardCat(QWidget):
     def reset_timer(self):
         """Stop and reset timer back to initial session state."""
         self.timer.stop()
-        self.cat_movie.stop()
         self.remaining_seconds = self.total_seconds
         self.elapsed_seconds = 0
         self.worked_seconds_in_current_minute = 0
@@ -389,7 +378,6 @@ class WizardCat(QWidget):
     def finish_session(self):
         """Handle session completion state transitions and notifications."""
         self.timer.stop()
-        self.cat_movie.stop()
         self.worked_seconds_in_current_minute = 0
 
         if self.current_session == "work":
@@ -409,7 +397,6 @@ class WizardCat(QWidget):
 
             if self.auto_start_breaks:
                 self.timer.start()
-                self.cat_movie.start()
                 self.start_button.setText("Ⅱ")
 
         else:
@@ -420,21 +407,18 @@ class WizardCat(QWidget):
 
             if self.auto_start_focus:
                 self.timer.start()
-                self.cat_movie.start()
                 self.start_button.setText("Ⅱ")
 
         self.broadcast_room_presence()
         self.update()
 
     def toggle_timer(self):
-        """Start or pause the timer and cat animation."""
+        """Start or pause the timer."""
         if self.timer.isActive():
             self.timer.stop()
-            self.cat_movie.stop()
             self.start_button.setText("▶")
         else:
             self.timer.start()
-            self.cat_movie.start()
             self.start_button.setText("Ⅱ")
 
         self.broadcast_room_presence()
@@ -443,7 +427,6 @@ class WizardCat(QWidget):
     def toggle_break(self):
         """Switch manually between focus and break sessions."""
         self.timer.stop()
-        self.cat_movie.stop()
 
         if self.current_session == "work":
             self.current_session = "short_break"
