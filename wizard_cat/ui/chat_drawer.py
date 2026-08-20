@@ -441,7 +441,7 @@ class RoomPanel(QDialog):
         if self.room_manager and self.room_manager.room_code:
             QGuiApplication.clipboard().setText(self.room_manager.room_code)
             self.copy_btn.setText("✓ Copied!")
-            QGuiApplication.singleShot(2000, lambda: self.copy_btn.setText("📋 Copy"))
+            QTimer.singleShot(2000, lambda: self.copy_btn.setText("📋 Copy"))
 
     def _leave_room(self):
         if self.room_manager:
