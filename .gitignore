@@ -1,0 +1,23 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environments
+.venv/
+env/
+venv/
+ENV/
+
+# Build & Dist
+build/
+dist/
+*.spec.bak
+
+# User settings & local data
+settings.json
+rpg_stats.json
+
+# IDEs
+.idea/
+.vscode/

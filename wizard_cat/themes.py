@@ -1,0 +1,108 @@
+"""Theme definitions and color palettes for Wizard Cat."""
+
+from typing import Dict, Any
+
+THEMES: Dict[str, Dict[str, Any]] = {
+    "wizard_purple": {
+        "name": "Wizard Purple 🔮",
+        "bg_gradient": ["#0B0924", "#17113B", "#32175C"],
+        "dialog_bg": "#17113B",
+        "input_bg": "#0B0924",
+        "border": "#6D4BA8",
+        "border_hover": "#A875FF",
+        "text_primary": "#F0E7FF",
+        "text_secondary": "#E8DFFF",
+        "accent": "#C89BFF",
+        "accent_hover": "#4A2878",
+        "badge": "#C89BFF",
+        "session_work": "#D2B4FF",
+        "session_short": "#E8D4FF",
+        "session_long": "#FFD98A",
+        "counter": "#9D86C5",
+        "stars": "#A875FF",
+        "sparkles": "#C89BFF",
+        "exp_bar_gradient": ["#8B65D1", "#FFD966"],
+        "btn_start_bg": "rgba(11, 9, 36, 150)",
+        "btn_start_hover": "rgba(50, 30, 92, 190)",
+        "btn_text": "#C89BFF",
+    },
+    "elf_green": {
+        "name": "Elf Forest Green 🌿",
+        "bg_gradient": ["#051A10", "#0E3B27", "#1B5E3C"],
+        "dialog_bg": "#0E3B27",
+        "input_bg": "#051A10",
+        "border": "#166534",
+        "border_hover": "#4ADE80",
+        "text_primary": "#E2F9E5",
+        "text_secondary": "#DCFCE7",
+        "accent": "#86EFAC",
+        "accent_hover": "#14532D",
+        "badge": "#86EFAC",
+        "session_work": "#86EFAC",
+        "session_short": "#BBF7D0",
+        "session_long": "#FDE047",
+        "counter": "#4ADE80",
+        "stars": "#4ADE80",
+        "sparkles": "#86EFAC",
+        "exp_bar_gradient": ["#16A34A", "#FACC15"],
+        "btn_start_bg": "rgba(5, 26, 16, 150)",
+        "btn_start_hover": "rgba(20, 83, 45, 190)",
+        "btn_text": "#86EFAC",
+    },
+    "ocean_blue": {
+        "name": "Ocean Moonlight 🌊",
+        "bg_gradient": ["#06152B", "#0F2B48", "#1B4965"],
+        "dialog_bg": "#0F2B48",
+        "input_bg": "#06152B",
+        "border": "#0284C7",
+        "border_hover": "#38BDF8",
+        "text_primary": "#E0F2FE",
+        "text_secondary": "#BAE6FD",
+        "accent": "#7DD3FC",
+        "accent_hover": "#0C4A6E",
+        "badge": "#7DD3FC",
+        "session_work": "#7DD3FC",
+        "session_short": "#BAE6FD",
+        "session_long": "#FDE047",
+        "counter": "#38BDF8",
+        "stars": "#38BDF8",
+        "sparkles": "#7DD3FC",
+        "exp_bar_gradient": ["#0284C7", "#38BDF8"],
+        "btn_start_bg": "rgba(6, 21, 43, 150)",
+        "btn_start_hover": "rgba(12, 74, 110, 190)",
+        "btn_text": "#7DD3FC",
+    },
+    "ruby_rose": {
+        "name": "Ruby Rose 🌹",
+        "bg_gradient": ["#220716", "#3E0F2B", "#661541"],
+        "dialog_bg": "#3E0F2B",
+        "input_bg": "#220716",
+        "border": "#9F1239",
+        "border_hover": "#F43F5E",
+        "text_primary": "#FFE4E6",
+        "text_secondary": "#FECDD3",
+        "accent": "#FB7185",
+        "accent_hover": "#4C0519",
+        "badge": "#FB7185",
+        "session_work": "#FB7185",
+        "session_short": "#FECDD3",
+        "session_long": "#FDE047",
+        "counter": "#F43F5E",
+        "stars": "#F43F5E",
+        "sparkles": "#FB7185",
+        "exp_bar_gradient": ["#E11D48", "#FBBF24"],
+        "btn_start_bg": "rgba(34, 7, 22, 150)",
+        "btn_start_hover": "rgba(76, 5, 25, 190)",
+        "btn_text": "#FB7185",
+    },
+}
+
+
+def get_theme(theme_key: str) -> Dict[str, Any]:
+    """Retrieve color palette dictionary for a given theme key."""
+    return THEMES.get(theme_key, THEMES["wizard_purple"])
+
+
+def get_all_themes() -> Dict[str, str]:
+    """Return map of theme keys to display names."""
+    return {key: data["name"] for key, data in THEMES.items()}
