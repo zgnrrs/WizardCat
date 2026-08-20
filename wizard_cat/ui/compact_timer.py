@@ -14,7 +14,7 @@ from wizard_cat.utils import resource_path
 
 
 class CompactTimerWidget(QWidget):
-    """Tiny Always-On-Top floating pill widget displaying live timer and glowing frame on new chat messages."""
+    """Slightly larger Always-On-Top floating pill widget displaying live timer and glowing frame on new chat messages."""
 
     restore_requested = Signal()
 
@@ -28,7 +28,7 @@ class CompactTimerWidget(QWidget):
             | Qt.WindowType.Tool
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-        self.resize(124, 38)
+        self.resize(150, 46)
         self.drag_position = None
 
         self.theme_colors = get_theme(theme_key)
@@ -41,9 +41,9 @@ class CompactTimerWidget(QWidget):
         )
         if font_id != -1:
             font_family = QFontDatabase.applicationFontFamilies(font_id)[0]
-            self.timer_font = QFont(font_family, 10)
+            self.timer_font = QFont(font_family, 11)
         else:
-            self.timer_font = QFont("Arial", 12, QFont.Weight.Bold)
+            self.timer_font = QFont("Arial", 14, QFont.Weight.Bold)
 
         # Glow Animation State
         self.is_glowing = False
@@ -62,7 +62,7 @@ class CompactTimerWidget(QWidget):
         self.update()
 
     def start_glow(self):
-        """Start pulsing magical gold/cyan border glow animation."""
+        """Start pulsing magical gold border glow animation."""
         if not self.is_glowing:
             self.is_glowing = True
             self.glow_timer.start()
@@ -89,13 +89,12 @@ class CompactTimerWidget(QWidget):
         # Render Glowing Frame Halo if glowing
         if self.is_glowing:
             glow_val = int((math.sin(self.glow_angle) + 1.0) / 2.0 * 180) + 70
-            glow_color = QColor(255, 217, 102, glow_val)  # Magical Gold
 
             painter.setBrush(Qt.BrushStyle.NoBrush)
-            for i in range(1, 5):
-                alpha = int(glow_val * (1.0 - i / 5.0))
+            for i in range(1, 6):
+                alpha = int(glow_val * (1.0 - i / 6.0))
                 painter.setPen(QColor(255, 217, 102, alpha))
-                painter.drawRoundedRect(rect.adjusted(i, i, -i, -i), 12, 12)
+                painter.drawRoundedRect(rect.adjusted(i, i, -i, -i), 14, 14)
 
         # Pill Background Gradient
         gradient = QLinearGradient(0, 0, 0, self.height())
@@ -105,7 +104,7 @@ class CompactTimerWidget(QWidget):
         painter.setBrush(gradient)
         border_color = QColor(255, 217, 102) if self.is_glowing else QColor(t["border"])
         painter.setPen(border_color)
-        painter.drawRoundedRect(rect.adjusted(2, 2, -2, -2), 12, 12)
+        painter.drawRoundedRect(rect.adjusted(2, 2, -2, -2), 14, 14)
 
         # Session Icon & Timer Text
         painter.setFont(self.timer_font)

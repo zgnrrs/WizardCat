@@ -111,21 +111,21 @@ class WizardCat(QWidget):
             self.tray_icon.show()
 
     def _init_controls(self):
-        """Initialize UI control buttons and styling."""
+        """Initialize UI control buttons and styling with shrink button right next to close."""
         self.close_button = QPushButton("×", self)
         self.close_button.setGeometry(294, 8, 20, 20)
         self.close_button.clicked.connect(self.close)
 
-        self.settings_button = QPushButton("⚙", self)
-        self.settings_button.setGeometry(268, 8, 24, 24)
-        self.settings_button.setToolTip("Settings")
-        self.settings_button.clicked.connect(self.open_settings)
-
-        # Shrink Mini Button (_)
+        # Shrink Button (_) positioned right next to Close (×)
         self.shrink_button = QPushButton("_", self)
-        self.shrink_button.setGeometry(244, 8, 20, 20)
+        self.shrink_button.setGeometry(270, 8, 20, 20)
         self.shrink_button.setToolTip("Shrink to Mini Floating Timer")
         self.shrink_button.clicked.connect(self.shrink_to_mini)
+
+        self.settings_button = QPushButton("⚙", self)
+        self.settings_button.setGeometry(244, 8, 24, 24)
+        self.settings_button.setToolTip("Settings")
+        self.settings_button.clicked.connect(self.open_settings)
 
         # Room / Chat Button (👥)
         self.room_button = QPushButton("👥", self)
