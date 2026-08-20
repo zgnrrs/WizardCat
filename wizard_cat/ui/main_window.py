@@ -115,11 +115,11 @@ class WizardCat(QWidget):
         self.break_button.setGeometry(164, 207, 40, 32)
         self.break_button.clicked.connect(self.toggle_break)
 
-        # Terminate Button (⏹) replaces former Reset button
-        self.terminate_button = QPushButton("⏹", self)
-        self.terminate_button.setGeometry(210, 207, 30, 32)
-        self.terminate_button.setToolTip("Oturumu Sonlandır (Terminate)")
-        self.terminate_button.clicked.connect(self.terminate_session)
+        # Reset / Restart Button (↻)
+        self.reset_button = QPushButton("↻", self)
+        self.reset_button.setGeometry(210, 207, 30, 32)
+        self.reset_button.setToolTip("Zamanlayıcıyı Sıfırla (Reset)")
+        self.reset_button.clicked.connect(self.reset_timer)
 
         self.update_button_styles()
 
@@ -192,14 +192,14 @@ class WizardCat(QWidget):
             }}
         """)
 
-        self.terminate_button.setStyleSheet(f"""
+        self.reset_button.setStyleSheet(f"""
             QPushButton {{
                 background-color: transparent;
                 color: {t['counter']};
                 border: none;
-                font-size: 15px;
+                font-size: 17px;
             }}
-            QPushButton:hover {{ color: #FF6B6B; }}
+            QPushButton:hover {{ color: {t['text_primary']}; }}
         """)
 
     def open_settings(self):
@@ -259,26 +259,13 @@ class WizardCat(QWidget):
         self.worked_seconds_in_current_minute = 0
         self.update()
 
-    def terminate_session(self):
-        """Stop active session and reset state back to fresh Focus session."""
+    def reset_timer(self):
+        """Stop and reset timer back to initial session state."""
         self.timer.stop()
         self.cat_movie.stop()
-
-        # Credit partial minute worked if 30+ seconds elapsed
-        if (
-            self.current_session == "work"
-            and self.worked_seconds_in_current_minute >= 30
-        ):
-            leveled_up, new_level, new_title = self.rpg.add_exp(1, focus_minutes=0)
-            save_rpg_stats(self.rpg)
-            if leveled_up:
-                self.show_notification(
-                    f"✨ LEVEL UP! (Lvl {new_level})",
-                    f"Tebrikler! Yeni Unvanın: {new_title} 🪄",
-                )
-
-        self.current_session = "work"
-        self.reset_current_session()
+        self.remaining_seconds = self.total_seconds
+        self.elapsed_seconds = 0
+        self.worked_seconds_in_current_minute = 0
         self.start_button.setText("▶")
         self.update()
         self.setFocus()
@@ -548,12 +535,12 @@ class WizardCat(QWidget):
         )
 
     def keyPressEvent(self, event):
-        """Keyboard shortcut handler for Space (start/pause) and R / Esc (terminate)."""
+        """Keyboard shortcut handler for Space (start/pause) and R (reset)."""
         if event.key() == Qt.Key.Key_Space:
             self.toggle_timer()
             return
-        if event.key() == Qt.Key.Key_R or event.key() == Qt.Key.Key_Escape:
-            self.terminate_session()
+        if event.key() == Qt.Key.Key_R:
+            self.reset_timer()
             return
         super().keyPressEvent(event)
 
