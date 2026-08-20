@@ -19,6 +19,7 @@ from wizard_cat.room import RoomManager
 from wizard_cat.rpg import load_rpg_stats, save_rpg_stats
 from wizard_cat.themes import get_theme
 from wizard_cat.ui.chat_drawer import RoomPanel
+from wizard_cat.ui.compact_timer import CompactTimerWidget
 from wizard_cat.ui.room_dialog import RoomDialog
 from wizard_cat.ui.settings_dialog import SettingsDialog
 from wizard_cat.utils import resource_path
@@ -55,7 +56,12 @@ class WizardCat(QWidget):
 
         # Multiplayer Room Manager & Room Window
         self.room_mgr = RoomManager()
+        self.room_mgr.chat_received.connect(self.on_room_chat_received)
         self.room_panel = None
+
+        # Compact Mini Timer Widget
+        self.compact_timer = CompactTimerWidget(theme_key=self.theme_key)
+        self.compact_timer.restore_requested.connect(self.restore_from_shrink)
 
         # Font Setup
         font_id = QFontDatabase.addApplicationFont(
@@ -111,13 +117,19 @@ class WizardCat(QWidget):
         self.close_button.clicked.connect(self.close)
 
         self.settings_button = QPushButton("⚙", self)
-        self.settings_button.setGeometry(266, 8, 24, 24)
+        self.settings_button.setGeometry(268, 8, 24, 24)
         self.settings_button.setToolTip("Settings")
         self.settings_button.clicked.connect(self.open_settings)
 
+        # Shrink Mini Button (_)
+        self.shrink_button = QPushButton("_", self)
+        self.shrink_button.setGeometry(244, 8, 20, 20)
+        self.shrink_button.setToolTip("Shrink to Mini Floating Timer")
+        self.shrink_button.clicked.connect(self.shrink_to_mini)
+
         # Room / Chat Button (👥)
         self.room_button = QPushButton("👥", self)
-        self.room_button.setGeometry(238, 8, 24, 24)
+        self.room_button.setGeometry(218, 8, 24, 24)
         self.room_button.setToolTip("Multiplayer Study Room & Chat")
         self.room_button.clicked.connect(self.open_room_menu)
 
@@ -139,6 +151,17 @@ class WizardCat(QWidget):
     def update_button_styles(self):
         """Apply active theme color palette to control buttons."""
         t = self.theme
+        btn_style = f"""
+            QPushButton {{
+                background-color: transparent;
+                color: {t['accent']};
+                border: none;
+                font-size: 15px;
+            }}
+            QPushButton:hover {{ color: {t['text_primary']}; }}
+            QPushButton:pressed {{ color: {t['border']}; }}
+        """
+
         self.close_button.setStyleSheet(f"""
             QPushButton {{
                 background-color: transparent;
@@ -150,30 +173,21 @@ class WizardCat(QWidget):
                 font-weight: bold;
             }}
             QPushButton:hover {{ color: {t['text_primary']}; }}
-            QPushButton:pressed {{ color: {t['border']}; }}
         """)
 
-        self.settings_button.setStyleSheet(f"""
-            QPushButton {{
-                background-color: transparent;
-                color: {t['accent']};
-                border: none;
-                font-size: 15px;
-            }}
-            QPushButton:hover {{ color: {t['text_primary']}; }}
-            QPushButton:pressed {{ color: {t['border']}; }}
-        """)
-
-        self.room_button.setStyleSheet(f"""
+        self.shrink_button.setStyleSheet(f"""
             QPushButton {{
                 background-color: transparent;
                 color: {t['accent']};
                 border: none;
                 font-size: 14px;
+                font-weight: bold;
             }}
             QPushButton:hover {{ color: {t['text_primary']}; }}
-            QPushButton:pressed {{ color: {t['border']}; }}
         """)
+
+        self.settings_button.setStyleSheet(btn_style)
+        self.room_button.setStyleSheet(btn_style)
 
         self.start_button.setStyleSheet(f"""
             QPushButton {{
@@ -225,6 +239,34 @@ class WizardCat(QWidget):
             }}
             QPushButton:hover {{ color: {t['text_primary']}; }}
         """)
+
+    def shrink_to_mini(self):
+        """Shrink window into Always-On-Top floating mini pill widget."""
+        pos = self.pos()
+        self.hide()
+        if self.room_panel and self.room_panel.isVisible():
+            self.room_panel.hide()
+
+        self.compact_timer.move(pos)
+        self.compact_timer.show()
+        self.compact_timer.raise_()
+
+    def restore_from_shrink(self):
+        """Restore full window when mini timer is clicked."""
+        self.compact_timer.stop_glow()
+        self.compact_timer.hide()
+
+        if self.room_panel and self.room_mgr.room_code:
+            self.room_panel.show()
+            self.room_panel.raise_()
+        else:
+            self.show()
+            self.raise_()
+
+    def on_room_chat_received(self, username: str, text: str, msg_type: str):
+        """Trigger glowing border animation on compact timer when chat arrives while shrunk."""
+        if self.compact_timer.isVisible():
+            self.compact_timer.start_glow()
 
     def broadcast_room_presence(self):
         """Immediately broadcast personal study stats and level to active room."""
@@ -292,6 +334,7 @@ class WizardCat(QWidget):
 
             self.theme_key = dialog.theme_combo.currentData()
             self.theme = get_theme(self.theme_key)
+            self.compact_timer.update_theme(self.theme_key)
             self.update_button_styles()
 
             if self.room_panel:
@@ -370,6 +413,15 @@ class WizardCat(QWidget):
             self.elapsed_seconds += 1
             if self.elapsed_seconds >= self.total_seconds:
                 self.finish_session()
+
+        # Update compact timer display
+        display_seconds = (
+            self.remaining_seconds
+            if self.timer_mode == "countdown"
+            else self.elapsed_seconds
+        )
+        time_str = f"{display_seconds // 60:02d}:{display_seconds % 60:02d}"
+        self.compact_timer.set_timer_display(time_str, self.current_session)
 
         # Broadcast presence heartbeat to room
         self.broadcast_room_presence()
@@ -502,7 +554,7 @@ class WizardCat(QWidget):
         painter.drawText(
             10,
             8,
-            220,
+            200,
             16,
             Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
             rpg_text,
@@ -640,6 +692,8 @@ class WizardCat(QWidget):
 
     def closeEvent(self, event):
         """Cleanly leave active study room when window closes."""
+        if self.compact_timer:
+            self.compact_timer.close()
         if self.room_mgr:
             self.room_mgr.leave_room()
         super().closeEvent(event)

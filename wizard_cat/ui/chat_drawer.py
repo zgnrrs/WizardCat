@@ -220,7 +220,7 @@ class RoomPanel(QDialog):
         self.colors = get_theme(theme_key)
         self._apply_stylesheet()
 
-        # Top Bar: Room Code, Copy, Leave
+        # Top Bar: Room Code, Shrink, Copy, Leave
         self.code_label = QLabel("Room Code: -")
         self.code_label.setStyleSheet(f"""
             QLabel {{
@@ -229,6 +229,10 @@ class RoomPanel(QDialog):
                 font-weight: bold;
             }}
         """)
+
+        self.shrink_btn = QPushButton("_")
+        self.shrink_btn.setToolTip("Shrink to Mini Floating Timer")
+        self.shrink_btn.clicked.connect(self._shrink)
 
         self.copy_btn = QPushButton("📋 Copy Code")
         self.copy_btn.clicked.connect(self._copy_code)
@@ -239,6 +243,7 @@ class RoomPanel(QDialog):
         top_bar = QHBoxLayout()
         top_bar.addWidget(self.code_label)
         top_bar.addStretch()
+        top_bar.addWidget(self.shrink_btn)
         top_bar.addWidget(self.copy_btn)
         top_bar.addWidget(self.leave_btn)
 
@@ -276,7 +281,7 @@ class RoomPanel(QDialog):
 
         # Bottom Pomodoro Timer Control Section
         timer_box = QVBoxLayout()
-        
+
         self.timer_readout = QLabel("25:00")
         self.timer_readout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.timer_readout.setFont(main_window.timer_font)
@@ -382,6 +387,10 @@ class RoomPanel(QDialog):
             self.start_btn.setText("Ⅱ")
         else:
             self.start_btn.setText("▶")
+
+    def _shrink(self):
+        if self.main_window:
+            self.main_window.shrink_to_mini()
 
     def _toggle_timer(self):
         self.main_window.toggle_timer()
