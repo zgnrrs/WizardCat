@@ -27,7 +27,7 @@ from wizard_cat.utils import resource_path
 
 
 class VirtualRoomCanvas(QWidget):
-    """Canvas displaying all connected room members as animated Wizard Cats on a virtual room floor."""
+    """Canvas displaying all connected room members as animated Wizard Cats in a 3x3 grid on a virtual room floor."""
 
     def __init__(self, parent=None, colors=None):
         super().__init__(parent)
@@ -35,7 +35,7 @@ class VirtualRoomCanvas(QWidget):
         self.members: List[dict] = []
         self.reactions: List[dict] = []  # active floating emote bubbles
 
-        self.setMinimumSize(360, 240)
+        self.setMinimumSize(360, 260)
 
         # Cat GIF Asset for all members
         self.cat_movie = QMovie(resource_path("assets/cat/wizard_cat.gif"))
@@ -114,21 +114,18 @@ class VirtualRoomCanvas(QWidget):
             )
             return
 
-        # Render Animated Cats side-by-side on Virtual Room Floor
+        # Fixed 3x3 Grid Seats across Virtual Room Floor (up to 9 wizards)
         count = len(self.members)
-        cat_w, cat_h = 70, 70
+        cat_w, cat_h = 65, 65
 
-        # Calculate neat row positions across virtual floor
+        col_x = [int(self.width() * 0.22), int(self.width() * 0.50), int(self.width() * 0.78)]
+        row_y = [75, 155, 235]
+
         positions = []
-        cols = 3
         for i in range(count):
-            r = i // cols
-            col = i % cols
-            row_count = min(cols, count - r * cols)
-            x_step = self.width() / (row_count + 1)
-            x = int((col + 1) * x_step)
-            y = int(80 + r * 85)
-            positions.append((x, y))
+            r = (i // 3) % 3
+            c_idx = i % 3
+            positions.append((col_x[c_idx], row_y[r]))
 
         current_frame = self.cat_movie.currentPixmap() if self.cat_movie.isValid() else QPixmap()
 
@@ -153,23 +150,23 @@ class VirtualRoomCanvas(QWidget):
             # Shadow under cat
             painter.setBrush(QColor(0, 0, 0, 80))
             painter.setPen(Qt.PenStyle.NoPen)
-            painter.drawEllipse(cx - 25, cy + cat_h // 2 - 8, 50, 14)
+            painter.drawEllipse(cx - 24, cy + cat_h // 2 - 8, 48, 14)
 
             # Animated Cat Graphic (Animated for all members)
             if not current_frame.isNull():
                 painter.drawPixmap(cx - cat_w // 2, cy - cat_h // 2, cat_w, cat_h, current_frame)
 
-            # Floating Personal Study Stats Badge Above/Below Cat
-            bg_rect = QRectF(cx - 75, cy - cat_h // 2 - 36, 150, 32)
+            # Floating Personal Study Stats Badge Above Cat
+            bg_rect = QRectF(cx - 70, cy - cat_h // 2 - 34, 140, 30)
             painter.setBrush(QColor(c["input_bg"]))
             painter.setPen(QColor(c["border"]))
             painter.drawRoundedRect(bg_rect, 6, 6)
 
             # Username & Level
-            painter.setFont(QFont("Arial", 8, QFont.Weight.Bold))
+            painter.setFont(QFont("Arial", 7, QFont.Weight.Bold))
             painter.setPen(QColor(c["accent"]))
             painter.drawText(
-                QRectF(cx - 75, cy - cat_h // 2 - 34, 150, 14),
+                QRectF(cx - 70, cy - cat_h // 2 - 32, 140, 13),
                 Qt.AlignmentFlag.AlignCenter,
                 f"🧙‍♂️ {name} (Lvl {lvl})",
             )
@@ -177,7 +174,7 @@ class VirtualRoomCanvas(QWidget):
             # Personal Study Time Stat Worked
             status_color = QColor(c["session_work"]) if status == "FOCUSING" else QColor(c["session_long"])
             painter.setPen(status_color)
-            painter.setFont(QFont("Arial", 8, QFont.Weight.Bold))
+            painter.setFont(QFont("Arial", 7, QFont.Weight.Bold))
 
             if status == "FOCUSING":
                 personal_stat_str = f"⏱️ Total: {total_str} ({session_mins}m)"
@@ -185,7 +182,7 @@ class VirtualRoomCanvas(QWidget):
                 personal_stat_str = f"☕ On Break ({total_str})"
 
             painter.drawText(
-                QRectF(cx - 75, cy - cat_h // 2 - 18, 150, 14),
+                QRectF(cx - 70, cy - cat_h // 2 - 17, 140, 13),
                 Qt.AlignmentFlag.AlignCenter,
                 personal_stat_str,
             )
@@ -194,7 +191,7 @@ class VirtualRoomCanvas(QWidget):
             for r in self.reactions:
                 if r["username"] == name or r["username"] == "all":
                     rx = cx
-                    ry = cy - cat_h // 2 - 45 - r["y_offset"]
+                    ry = cy - cat_h // 2 - 40 - r["y_offset"]
                     op = int(r["opacity"] * 255)
                     if op > 0:
                         painter.setFont(QFont("Arial", 16))
