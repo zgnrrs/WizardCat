@@ -138,14 +138,13 @@ class VirtualRoomCanvas(QWidget):
             lvl = member.get("level", 1)
             status = member.get("status", "FOCUSING")
 
-            # Personal study stats
-            total_mins = member.get("total_focus_minutes", 0)
+            # Room session focus stats ONLY (time worked in this active room)
             session_mins = member.get("session_minutes", 0)
 
-            if total_mins < 60:
-                total_str = f"{total_mins}m"
+            if session_mins < 60:
+                stat_time_str = f"{session_mins}m"
             else:
-                total_str = f"{total_mins // 60}h {total_mins % 60}m"
+                stat_time_str = f"{session_mins // 60}h {session_mins % 60}m"
 
             # Shadow under cat
             painter.setBrush(QColor(0, 0, 0, 80))
@@ -156,7 +155,7 @@ class VirtualRoomCanvas(QWidget):
             if not current_frame.isNull():
                 painter.drawPixmap(cx - cat_w // 2, cy - cat_h // 2, cat_w, cat_h, current_frame)
 
-            # Floating Personal Study Stats Badge Above Cat
+            # Floating Personal Room Study Stats Badge Above Cat
             bg_rect = QRectF(cx - 70, cy - cat_h // 2 - 34, 140, 30)
             painter.setBrush(QColor(c["input_bg"]))
             painter.setPen(QColor(c["border"]))
@@ -171,15 +170,15 @@ class VirtualRoomCanvas(QWidget):
                 f"🧙‍♂️ {name} (Lvl {lvl})",
             )
 
-            # Personal Study Time Stat Worked
+            # Room Session Time Stat Worked
             status_color = QColor(c["session_work"]) if status == "FOCUSING" else QColor(c["session_long"])
             painter.setPen(status_color)
             painter.setFont(QFont("Arial", 7, QFont.Weight.Bold))
 
             if status == "FOCUSING":
-                personal_stat_str = f"⏱️ Total: {total_str} ({session_mins}m)"
+                personal_stat_str = f"⏱️ Worked: {stat_time_str}"
             else:
-                personal_stat_str = f"☕ On Break ({total_str})"
+                personal_stat_str = f"☕ On Break ({stat_time_str})"
 
             painter.drawText(
                 QRectF(cx - 70, cy - cat_h // 2 - 17, 140, 13),

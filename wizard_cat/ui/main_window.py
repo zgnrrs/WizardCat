@@ -54,6 +54,9 @@ class WizardCat(QWidget):
 
         self.rpg = load_rpg_stats()
 
+        # Room Session Focus Minutes Counter
+        self.room_session_focus_minutes = 0
+
         # Multiplayer Room Manager & Room Window
         self.room_mgr = RoomManager()
         self.room_mgr.chat_received.connect(self.on_room_chat_received)
@@ -281,7 +284,7 @@ class WizardCat(QWidget):
             self.compact_timer.start_glow()
 
     def broadcast_room_presence(self):
-        """Immediately broadcast personal study stats and level to active room."""
+        """Broadcast wizard presence heartbeat with time worked in this room session."""
         if not self.room_mgr or not self.room_mgr.room_code:
             return
 
@@ -293,22 +296,13 @@ class WizardCat(QWidget):
         time_str = f"{display_seconds // 60:02d}:{display_seconds % 60:02d}"
         status = "FOCUSING" if self.current_session == "work" else "ON BREAK"
 
-        if self.current_session == "work":
-            if self.timer_mode == "countdown":
-                session_secs = max(0, self.total_seconds - self.remaining_seconds)
-            else:
-                session_secs = self.elapsed_seconds
-            session_mins = session_secs // 60
-        else:
-            session_mins = 0
-
         self.room_mgr.broadcast_presence(
             level=self.rpg.level,
             title=self.rpg.title,
             status=status,
             time_str=time_str,
             total_focus_minutes=self.rpg.total_focus_minutes,
-            session_minutes=session_mins,
+            session_minutes=self.room_session_focus_minutes,
         )
 
     def open_room_menu(self):
@@ -324,6 +318,7 @@ class WizardCat(QWidget):
                 joined = False
 
             if joined:
+                self.room_session_focus_minutes = 0  # Reset room time worked for new room session
                 self.hide()  # Hide main window when entering room window
                 self.room_panel = RoomPanel(self, self.room_mgr)
                 self.room_panel.set_room_code(self.room_mgr.room_code)
@@ -403,6 +398,8 @@ class WizardCat(QWidget):
             self.worked_seconds_in_current_minute += 1
             if self.worked_seconds_in_current_minute >= 60:
                 self.worked_seconds_in_current_minute = 0
+                self.room_session_focus_minutes += 1  # Increment room focus time worked
+
                 leveled_up, new_level, new_title = self.rpg.add_exp(
                     2, focus_minutes=1
                 )
