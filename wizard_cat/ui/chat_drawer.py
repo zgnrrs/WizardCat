@@ -36,11 +36,11 @@ class VirtualRoomCanvas(QWidget):
         self.members: List[dict] = []
         self.reactions: List[dict] = []  # active floating emote bubbles
 
-        self.setMinimumSize(360, 260)
+        self.setMinimumSize(360, 270)
 
         # Cat GIF Asset for all members
         self.cat_movie = QMovie(resource_path("assets/cat/wizard_cat.gif"))
-        self.cat_movie.setCacheMode(QMovie.CacheMode.CacheAll)
+        self.cat_movie.setCacheMode(QMovie.CacheMode.CacheNone)
         self.cat_movie.frameChanged.connect(self.update)
         self.cat_movie.start()
 
@@ -49,6 +49,20 @@ class VirtualRoomCanvas(QWidget):
         self.anim_timer.setInterval(40)
         self.anim_timer.timeout.connect(self._update_reactions)
         self.anim_timer.start()
+
+    def pause_animations(self):
+        """Pause GIF movie and floating reaction animation timer when hidden to save RAM/CPU."""
+        if hasattr(self, "cat_movie") and self.cat_movie.isValid():
+            self.cat_movie.setPaused(True)
+        if hasattr(self, "anim_timer") and self.anim_timer.isActive():
+            self.anim_timer.stop()
+
+    def resume_animations(self):
+        """Resume GIF movie and reaction animation timer when canvas becomes visible."""
+        if hasattr(self, "cat_movie") and self.cat_movie.isValid():
+            self.cat_movie.setPaused(False)
+        if hasattr(self, "anim_timer") and not self.anim_timer.isActive():
+            self.anim_timer.start()
 
     def set_members(self, member_list: List[dict]):
         self.members = member_list
@@ -120,7 +134,7 @@ class VirtualRoomCanvas(QWidget):
         cat_w, cat_h = 65, 65
 
         col_x = [int(self.width() * 0.22), int(self.width() * 0.50), int(self.width() * 0.78)]
-        row_y = [75, 155, 235]
+        row_y = [90, 168, 245]
 
         positions = []
         for i in range(count):
@@ -152,9 +166,14 @@ class VirtualRoomCanvas(QWidget):
             painter.setPen(Qt.PenStyle.NoPen)
             painter.drawEllipse(cx - 24, cy + cat_h // 2 - 8, 48, 14)
 
-            # Animated Cat Graphic (Animated for all members)
+            # Animated Cat Graphic (Always shown; subtle opacity if on break)
             if not current_frame.isNull():
+                if status != "FOCUSING":
+                    painter.setOpacity(0.85)
+                else:
+                    painter.setOpacity(1.0)
                 painter.drawPixmap(cx - cat_w // 2, cy - cat_h // 2, cat_w, cat_h, current_frame)
+                painter.setOpacity(1.0)
 
             # Floating Personal Room Study Stats Badge Above Cat
             bg_rect = QRectF(cx - 70, cy - cat_h // 2 - 34, 140, 30)
@@ -171,7 +190,7 @@ class VirtualRoomCanvas(QWidget):
                 f"🧙‍♂️ {name} (Lvl {lvl})",
             )
 
-            # Room Session Time Stat Worked
+            # Room Session Time Stat Worked / Break Status
             status_color = QColor(c["session_work"]) if status == "FOCUSING" else QColor(c["session_long"])
             painter.setPen(status_color)
             painter.setFont(QFont("Arial", 7, QFont.Weight.Bold))
@@ -187,11 +206,11 @@ class VirtualRoomCanvas(QWidget):
                 personal_stat_str,
             )
 
-            # Render Floating Reaction Bubbles
+            # Render Floating Reaction Bubbles (Clamped to remain visible below top canvas border)
             for r in self.reactions:
                 if r["username"] == name or r["username"] == "all":
                     rx = cx
-                    ry = cy - cat_h // 2 - 40 - r["y_offset"]
+                    ry = max(10, cy - cat_h // 2 - 25 - r["y_offset"])
                     op = int(r["opacity"] * 255)
                     if op > 0:
                         painter.setFont(QFont("Arial", 16))
@@ -323,9 +342,9 @@ class RoomPanel(QDialog):
         # Apply Stylesheet
         self._apply_stylesheet()
 
-        # Update Timer UI Timer
+        # Update Timer UI Timer (500ms interval to reduce CPU load)
         self.update_timer = QTimer(self)
-        self.update_timer.setInterval(200)
+        self.update_timer.setInterval(500)
         self.update_timer.timeout.connect(self._sync_timer_display)
         self.update_timer.start()
 
@@ -448,14 +467,32 @@ class RoomPanel(QDialog):
             self.room_manager.leave_room()
         self.close()
 
+    def showEvent(self, event):
+        super().showEvent(event)
+        if hasattr(self, "canvas"):
+            self.canvas.resume_animations()
+        if hasattr(self, "update_timer") and not self.update_timer.isActive():
+            self.update_timer.start()
+
+    def hideEvent(self, event):
+        super().hideEvent(event)
+        if hasattr(self, "canvas"):
+            self.canvas.pause_animations()
+        if hasattr(self, "update_timer") and self.update_timer.isActive():
+            self.update_timer.stop()
+
     def closeEvent(self, event):
-        """When room window is closed or left, restore the original main window."""
+        """When room window is closed or left, restore the original main window and collect RAM garbage."""
+        import gc
         if self.room_manager:
             self.room_manager.leave_room()
         self.update_timer.stop()
+        if hasattr(self, "canvas"):
+            self.canvas.pause_animations()
         if self.main_window:
             self.main_window.show()
         super().closeEvent(event)
+        gc.collect()
 
     def _apply_stylesheet(self):
         c = self.colors
