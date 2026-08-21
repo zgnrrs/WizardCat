@@ -10,7 +10,7 @@
 
 **Wizard Cat** is a lightweight Windows desktop application built with **Python and PySide6**.
 
-It combines the Pomodoro technique with a cozy pixel-art aesthetic, an animated wizard cat, and a magical purple-themed interface.
+It combines the Pomodoro technique with a cozy pixel-art aesthetic, animated wizard cats, multiplayer study lounges, floating mini timers, and RPG leveling.
 
 The goal is simple: make focused work and study sessions feel a little less boring. 🪄
 
@@ -18,22 +18,23 @@ The goal is simple: make focused work and study sessions feel a little less bori
 
 ## ✨ Features
 
-- 🍅 Pomodoro focus timer
-- ☕ Short and long breaks
-- 🐈‍⬛ Animated wizard cat
-- ✨ Magical pixel-art inspired interface
-- ⚙️ Customizable focus and break durations
-- 🔄 Countdown and count-up timer modes
-- 🔢 Pomodoro session counter
-- 🔔 Desktop notifications
-- 💾 Persistent user settings
-- ⌨️ Keyboard shortcuts
-- 🖥️ Frameless desktop widget
-- 🪄 Draggable window
+- 👥 **Multiplayer Online Study Rooms & Live Chat**: Create or join rooms with friends, send floating emote reactions, and chat in real-time over MQTT.
+- 🛋️ **Virtual Wizard Cat Lounge**: Gather side-by-side with online friends on a cozy virtual floor in a 3x3 grid seats layout with personal room focus stats.
+- ⏱️ **Compact Mini Floating Timer**: Shrink into an Always-On-Top floating mini pill widget that stays above all apps and pulses with a gold glow when new chat messages arrive.
+- 📊 **Parallel Pomodoro Progress Bar**: Visual progress bar that fills up in direct parallel with your active focus or break timer.
+- 🧙‍♂️ **Wizard Leveling & EXP System**: Earn 2 EXP every minute you focus, level up your wizard rank, and unlock new magical titles!
+- 🎨 **Customizable Color Themes**: Switch live between cozy themes (Wizard Purple, Elf Green, Midnight Blue, etc.).
+- 🍅 **Pomodoro Focus Timer**: Customizable focus and break durations (Short & Long breaks).
+- ☕ **Flexible Session Modes**: Countdown and count-up timer modes with automatic session transitions.
+- 🔢 **Pomodoro Session Counter**: Track completed focus sessions.
+- 🔔 **Desktop Notifications**: System tray notifications on session end and level-ups.
+- 💾 **Persistent User Settings**: Automatic saving of preferences, RPG stats, and active theme.
+- ⌨️ **Keyboard Shortcuts**: Space (Start/Pause), R (Reset).
+- 🖥️ **Frameless Desktop Widget**: Clean, frameless window with drag-to-move functionality.
 
 ---
 
-## 💻 Download
+## 💻 Download & Release Instructions
 
 You don't need Python or any additional dependencies to use Wizard Cat.
 
@@ -53,13 +54,11 @@ Download `WizardCat.exe`, run it, and start focusing. 🪄
 
 Wizard Cat follows the Pomodoro technique:
 
-1. 🧙‍♂️ Start a focus session.
-2. 📚 Work until the timer reaches zero.
+1. 🧙‍♂️ Start a focus session alone or join an online study room with friends.
+2. 📚 Work until the timer reaches zero and earn RPG EXP.
 3. ☕ Take a short break.
-4. 🔁 Repeat the cycle.
+4. 🔁 Repeat the cycle and level up your wizard title!
 5. 🌙 After a set number of sessions, take a longer break.
-
-The number and duration of sessions can be customized from the settings menu.
 
 ---
 
@@ -72,8 +71,9 @@ Wizard Cat allows you to customize:
 | Focus Duration | Length of a focus session |
 | Short Break | Duration of a short break |
 | Long Break | Duration of a long break |
-| Sessions Before Long Break | Number of focus sessions before a long break |
+| Long Break Interval | Number of focus sessions before a long break |
 | Timer Mode | Countdown or count-up |
+| Color Theme | Live theme selector (Wizard Purple, Elf Green, etc.) |
 | Automatic Breaks | Automatically start breaks |
 | Automatic Focus | Automatically start the next focus session |
 
@@ -92,10 +92,9 @@ Wizard Cat allows you to customize:
 
 - 🐍 **Python**
 - 🖥️ **PySide6 / Qt**
+- 📡 **Paho-MQTT**
 - 📦 **PyInstaller**
 - 🎨 **Pixel Art**
 - 🎞️ **GIF Animation**
 
 ---
-
-

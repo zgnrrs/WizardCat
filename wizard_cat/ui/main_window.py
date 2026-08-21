@@ -1,3 +1,4 @@
+import webbrowser
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import (
     QColor,
@@ -22,6 +23,7 @@ from wizard_cat.ui.chat_drawer import RoomPanel
 from wizard_cat.ui.compact_timer import CompactTimerWidget
 from wizard_cat.ui.room_dialog import RoomDialog
 from wizard_cat.ui.settings_dialog import SettingsDialog
+from wizard_cat.updater import CheckUpdateThread
 from wizard_cat.utils import resource_path
 
 
@@ -33,7 +35,7 @@ class WizardCat(QWidget):
 
         # Window Setup
         self.setWindowTitle("Wizard Cat")
-        self.resize(320, 250)
+        self.resize(360, 260)
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
@@ -93,11 +95,22 @@ class WizardCat(QWidget):
         self.timer.setInterval(1000)
         self.timer.timeout.connect(self.update_timer)
 
-        # Cat Animation
+        # Heartbeat Timer for Multiplayer Room Presence (runs continuously every 3s)
+        self.heartbeat_timer = QTimer(self)
+        self.heartbeat_timer.setInterval(3000)
+        self.heartbeat_timer.timeout.connect(self.broadcast_room_presence)
+        self.heartbeat_timer.start()
+
+        # Cat Animation (CacheNone to optimize RAM footprint)
         self.cat_movie = QMovie(resource_path("assets/cat/wizard_cat.gif"))
-        self.cat_movie.setCacheMode(QMovie.CacheMode.CacheAll)
+        self.cat_movie.setCacheMode(QMovie.CacheMode.CacheNone)
         self.cat_movie.frameChanged.connect(self.update)
         self.cat_movie.start()
+
+        # GitHub Auto-Update Checker (runs asynchronously in background thread)
+        self.update_thread = CheckUpdateThread(self)
+        self.update_thread.update_available.connect(self.on_update_available)
+        self.update_thread.start()
 
         # UI Controls
         self._init_controls()
@@ -115,37 +128,39 @@ class WizardCat(QWidget):
 
     def _init_controls(self):
         """Initialize UI control buttons and styling with shrink button right next to close."""
+        w = self.width()
         self.close_button = QPushButton("×", self)
-        self.close_button.setGeometry(294, 8, 20, 20)
+        self.close_button.setGeometry(w - 26, 8, 20, 20)
         self.close_button.clicked.connect(self.close)
 
         # Shrink Button (_) positioned right next to Close (×)
         self.shrink_button = QPushButton("_", self)
-        self.shrink_button.setGeometry(270, 8, 20, 20)
+        self.shrink_button.setGeometry(w - 48, 8, 20, 20)
         self.shrink_button.setToolTip("Shrink to Mini Floating Timer")
         self.shrink_button.clicked.connect(self.shrink_to_mini)
 
         self.settings_button = QPushButton("⚙", self)
-        self.settings_button.setGeometry(244, 8, 24, 24)
+        self.settings_button.setGeometry(w - 74, 8, 24, 24)
         self.settings_button.setToolTip("Settings")
         self.settings_button.clicked.connect(self.open_settings)
 
         # Room / Chat Button (👥)
         self.room_button = QPushButton("👥", self)
-        self.room_button.setGeometry(218, 8, 24, 24)
+        self.room_button.setGeometry(w - 100, 8, 24, 24)
         self.room_button.setToolTip("Multiplayer Study Room & Chat")
         self.room_button.clicked.connect(self.open_room_menu)
 
+        btn_group_x = (w - 122) // 2
         self.start_button = QPushButton("▶", self)
-        self.start_button.setGeometry(118, 207, 40, 32)
+        self.start_button.setGeometry(btn_group_x, 207, 40, 32)
         self.start_button.clicked.connect(self.toggle_timer)
 
         self.break_button = QPushButton("☕", self)
-        self.break_button.setGeometry(164, 207, 40, 32)
+        self.break_button.setGeometry(btn_group_x + 46, 207, 40, 32)
         self.break_button.clicked.connect(self.toggle_break)
 
         self.reset_button = QPushButton("↻", self)
-        self.reset_button.setGeometry(210, 207, 30, 32)
+        self.reset_button.setGeometry(btn_group_x + 92, 207, 30, 32)
         self.reset_button.setToolTip("Reset Timer")
         self.reset_button.clicked.connect(self.reset_timer)
 
@@ -277,6 +292,33 @@ class WizardCat(QWidget):
         else:
             self.show()
             self.raise_()
+
+    def showEvent(self, event):
+        """Resume GIF animation when window becomes visible."""
+        super().showEvent(event)
+        if hasattr(self, "cat_movie") and self.cat_movie.isValid():
+            if self.cat_movie.state() == QMovie.MovieState.Paused:
+                self.cat_movie.setPaused(False)
+
+    def hideEvent(self, event):
+        """Pause GIF animation when window is hidden to save RAM and CPU."""
+        super().hideEvent(event)
+        if hasattr(self, "cat_movie") and self.cat_movie.isValid():
+            if self.cat_movie.state() == QMovie.MovieState.Running:
+                self.cat_movie.setPaused(True)
+
+    def on_update_available(self, tag_name: str, download_url: str):
+        """Show desktop tray notification when a new version is released on GitHub."""
+        self.show_notification(
+            "✨ WizardCat Update Available!",
+            f"Version {tag_name} is released on GitHub. Click to download!",
+        )
+        if hasattr(self, "tray_icon") and self.tray_icon:
+            try:
+                self.tray_icon.messageClicked.disconnect()
+            except Exception:
+                pass
+            self.tray_icon.messageClicked.connect(lambda: webbrowser.open(download_url))
 
     def on_room_chat_received(self, username: str, text: str, msg_type: str):
         """Trigger glowing border animation on compact timer when chat arrives while shrunk."""
@@ -561,8 +603,8 @@ class WizardCat(QWidget):
         painter.drawText(
             10,
             8,
-            200,
-            16,
+            self.width() - 110,
+            20,
             Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
             rpg_text,
         )
@@ -623,7 +665,7 @@ class WizardCat(QWidget):
         # Pomodoro Timer Progress Bar (Fills in parallel with active timer)
         timer_bar_x = 40
         timer_bar_y = 196
-        timer_bar_w = 240
+        timer_bar_w = self.width() - 80
         timer_bar_h = 5
 
         # Background track
@@ -690,7 +732,7 @@ class WizardCat(QWidget):
 
         exp_text = f"{self.rpg.exp}/{self.rpg.required_exp} EXP"
         painter.drawText(
-            195,
+            self.width() - 125,
             238,
             110,
             10,
